@@ -2,6 +2,8 @@ export interface CandidateProfile {
   id: string
   full_name: string | null
   avatar_url: string | null
+  phone: string | null
+  date_of_birth: string | null
   province_city: string | null
   ward: string | null
   financial_need_level: string | null
@@ -16,6 +18,8 @@ export interface CandidateProfile {
 
 export interface CandidateProfileUpdatePayload {
   full_name?: string | null
+  phone?: string | null
+  date_of_birth?: string | null
   province_city?: string | null
   ward?: string | null
   financial_need_level?: string | null
