@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import { Button } from '@/shared/components/ui/Button'
-import { Badge } from '@/shared/components/ui/Badge'
 import { formatCurrencyVnd, formatDate } from '@/shared/lib/format'
 import { MatchBadge } from '@/modules/scholarships/components/badges'
 import type { MatchLabel, Scholarship } from '@/modules/scholarships/types'
@@ -17,67 +16,82 @@ export function ScholarshipCard({
   match?: { score: number; label: MatchLabel }
 }) {
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="relative aspect-video w-full shrink-0 bg-slate-100">
-        <Link to={`/hoc-bong/${scholarship.id}`}>
+    <div className="flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md sm:flex-row">
+      <div className="relative aspect-video w-full shrink-0 bg-slate-100 sm:aspect-auto sm:h-auto sm:w-48 md:w-56">
+        <Link to={`/hoc-bong/${scholarship.id}`} className="block h-full">
           {scholarship.image_url ? (
             <img src={scholarship.image_url} alt="" className="size-full object-cover" />
           ) : (
             <ScholarshipImageFallback title={scholarship.title} />
           )}
         </Link>
-
-        {match && (
-          <div className="absolute left-3 top-3">
-            <MatchBadge score={match.score} label={match.label} />
-          </div>
-        )}
-
-        {onToggleSave && (
-          <button
-            type="button"
-            onClick={onToggleSave}
-            aria-label={saved ? 'Bỏ lưu học bổng' : 'Lưu học bổng'}
-            className="absolute right-3 top-3 flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/90 text-brand-blue-500 shadow-sm backdrop-blur hover:bg-white"
-          >
-            <BookmarkIcon filled={Boolean(saved)} />
-          </button>
-        )}
       </div>
 
-      <div className="flex flex-1 flex-col gap-3 p-5">
-        <Link to={`/hoc-bong/${scholarship.id}`} className="block">
-          <h3 className="line-clamp-2 text-base font-bold text-brand-ink hover:text-brand-blue-600">
-            {scholarship.title}
-          </h3>
-        </Link>
+      <div className="flex flex-1 flex-col justify-between gap-4 p-4 sm:p-5">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-start justify-between gap-3">
+            <Link to={`/hoc-bong/${scholarship.id}`} className="block flex-1">
+              <h3 className="line-clamp-1 text-base font-bold text-brand-ink hover:text-brand-blue-600 sm:line-clamp-2">
+                {scholarship.title}
+              </h3>
+            </Link>
 
-        <div className="space-y-1 text-sm text-brand-ink-soft">
-          <p className="flex items-center gap-1.5">
-            <CoinIcon />
-            {formatCurrencyVnd(scholarship.total_budget)}
-          </p>
-          <p className="flex items-center gap-1.5">
-            <SeatIcon />
-            {scholarship.total_slots != null ? `${scholarship.total_slots} suất` : 'Không giới hạn suất'}
-          </p>
-          <p className="flex items-center gap-1.5">
-            <CalendarIcon />
-            {formatDate(scholarship.start_date)} - {formatDate(scholarship.deadline)}
-          </p>
+            <div className="flex shrink-0 items-center gap-2">
+              {match && <MatchBadge score={match.score} label={match.label} />}
+
+              {onToggleSave && (
+                <button
+                  type="button"
+                  onClick={onToggleSave}
+                  aria-label={saved ? 'Bỏ lưu học bổng' : 'Lưu học bổng'}
+                  className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-brand-blue-500 transition-colors hover:bg-slate-100"
+                >
+                  <BookmarkIcon filled={Boolean(saved)} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-1 flex flex-col gap-1.5 text-sm text-brand-ink-soft">
+            <p className="flex items-center gap-1.5 font-semibold text-brand-ink">
+              <CoinIcon />
+              {formatCurrencyVnd(scholarship.total_budget)}
+            </p>
+            <p className="flex items-center gap-1.5">
+              <SeatIcon />
+              {scholarship.total_slots != null ? `${scholarship.total_slots} suất` : 'Không giới hạn'}
+            </p>
+            <p className="flex items-center gap-1.5">
+              <CalendarIcon />
+              {formatDate(scholarship.start_date)} - {formatDate(scholarship.deadline)}
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          <Badge>{scholarship.value_type}</Badge>
-          {scholarship.location_province_city && <Badge>{scholarship.location_province_city}</Badge>}
-          {scholarship.majors[0] && <Badge>{scholarship.majors[0].name}</Badge>}
-        </div>
+        <div className="flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Cùng đồng bộ 1 tone màu xanh thương hiệu nổi bật, viền mảnh rõ ràng */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+              {scholarship.value_type}
+            </span>
+            {scholarship.location_province_city && (
+              <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                {scholarship.location_province_city}
+              </span>
+            )}
+            {scholarship.majors[0] && (
+              <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                {scholarship.majors[0].name}
+              </span>
+            )}
+          </div>
 
-        <Link to={`/hoc-bong/${scholarship.id}/ung-tuyen`} className="mt-auto pt-1">
-          <Button className="w-full" size="sm">
-            Ứng tuyển ngay
-          </Button>
-        </Link>
+          <Link to={`/hoc-bong/${scholarship.id}/ung-tuyen`} className="shrink-0">
+            <Button size="sm" className="w-full sm:w-auto">
+              Ứng tuyển ngay
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   )
@@ -90,8 +104,6 @@ const FALLBACK_GRADIENTS = [
 ]
 
 function ScholarshipImageFallback({ title }: { title: string }) {
-  // Không có ảnh do đối tác chưa tải lên — dùng gradient + chữ cái đầu để card vẫn cân đối
-  // về mặt hình ảnh thay vì để trống, chọn gradient theo hash của tiêu đề cho đa dạng.
   const index = title.charCodeAt(0) % FALLBACK_GRADIENTS.length
   return (
     <div className={`flex size-full items-center justify-center bg-linear-to-br ${FALLBACK_GRADIENTS[index]}`}>

@@ -53,8 +53,7 @@ export function ScholarshipListPage() {
       setRecommended(null)
       return
     }
-    // Gọi tuần tự: cả hai endpoint đều tự tạo CandidateProfile nếu ứng viên chưa có (lazy upsert ở
-    // backend) — bắn song song 2 request "tạo nếu chưa có" cùng lúc từng gây lỗi 500 ngẫu nhiên.
+
     void interactionsApi
       .listMine('saved')
       .then((list) => setSavedIds(Object.fromEntries(list.map((i) => [i.scholarship_id, i.id]))))
@@ -138,9 +137,11 @@ export function ScholarshipListPage() {
         <h1 className="mb-1 text-2xl font-bold text-brand-ink">Tất cả học bổng</h1>
         <p className="mb-6 text-sm text-brand-ink-soft">Dựa trên hồ sơ học vấn và các bộ lọc của bạn.</p>
 
-
+        {/* Sidebar bộ lọc ở bên trái (lg:w-80), Danh sách học bổng xếp dọc/trải ngang bên phải */}
         <div className="flex flex-col gap-6 lg:flex-row">
-          <ScholarshipFilters values={filters} onChange={setFilters} majors={majors} />
+          <div className="w-full lg:w-80 lg:flex-shrink-0">
+            <ScholarshipFilters values={filters} onChange={setFilters} majors={majors} />
+          </div>
 
           <div className="min-w-0 flex-1">
             {loading ? (
@@ -151,7 +152,8 @@ export function ScholarshipListPage() {
               <EmptyState title="Không tìm thấy học bổng phù hợp" description="Thử thay đổi từ khoá hoặc bộ lọc của bạn." />
             ) : (
               <>
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+                {/* Thay thế Grid 3 cột bằng danh sách 1 cột trải dài chiều ngang */}
+                <div className="flex flex-col gap-4">
                   {items.map((s) => (
                     <ScholarshipCard
                       key={s.id}
@@ -166,7 +168,7 @@ export function ScholarshipListPage() {
                     />
                   ))}
                 </div>
-                <div className="mt-8">
+                <div className="mt-8 flex justify-center">
                   <Pagination page={page} pages={pages} onChange={setPage} />
                 </div>
               </>
