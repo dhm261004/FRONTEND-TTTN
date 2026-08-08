@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { cn } from '@/shared/lib/cn'
 
 interface FieldProps {
   label: ReactNode
@@ -11,13 +12,13 @@ interface FieldProps {
 
 export function Field({ label, required, error, hint, children, className }: FieldProps) {
   return (
-    <label className={className}>
-      <span className="mb-2 block text-sm font-medium text-brand-ink">
+    <label className={cn('block', className)}>
+      <span className="mb-3 block text-sm font-medium text-brand-ink">
         {label} {required && <span className="text-red-500">*</span>}
       </span>
       {children}
-      {hint && !error && <span className="mt-1.5 block text-xs text-brand-ink-soft">{hint}</span>}
-      {error && <span className="mt-1.5 block text-xs text-red-500">{error}</span>}
+      {hint && !error && <span className="mt-2 block text-xs text-brand-ink-soft">{hint}</span>}
+      {error && <span className="mt-2 block text-xs text-red-500">{error}</span>}
     </label>
   )
 }

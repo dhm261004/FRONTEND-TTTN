@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 import { AccountSettingsPage } from '@/modules/partner/pages/AccountSettingsPage'
+import { ProfileEditPage } from '@/modules/partner/pages/ProfileEditPage'
 import { SecurityPage } from '@/modules/partner/pages/SecurityPage'
 import { UnsupportedFeaturePage } from '@/modules/partner/pages/UnsupportedFeaturePage'
 import { ACCOUNT_NAV } from '@/modules/partner/components/nav'
@@ -8,6 +9,7 @@ export function PartnerAccountRoutes() {
   return (
     <Routes>
       <Route index element={<AccountSettingsPage />} />
+      <Route path="ho-so-cong-ty" element={<ProfileEditPage />} />
       <Route path="bao-mat" element={<SecurityPage />} />
       <Route
         path="giao-dich"

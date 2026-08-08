@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
-import { BreadcrumbLayout } from '@/modules/partner/components/BreadcrumbLayout'
+import { PartnerLayout } from '@/modules/partner/components/PartnerLayout'
+import { ACCOUNT_NAV } from '@/modules/partner/components/nav'
 import { PartnerProfileForm } from '@/modules/partner/components/PartnerProfileForm'
 import { partnerProfileApi, type PartnerProfilePayload } from '@/modules/partner/api/partnerProfile.api'
 import { usePartnerProfile } from '@/modules/partner/PartnerProfileContext'
@@ -31,11 +32,15 @@ export function ProfileEditPage() {
   }
 
   return (
-    <BreadcrumbLayout crumbs={[{ label: 'Tài khoản', to: '/tai-khoan' }, { label: 'Cập nhật hồ sơ nhà tài trợ' }]}>
+    <PartnerLayout nav={ACCOUNT_NAV}>
       {loading || !profile ? (
         <Spinner />
       ) : (
-        <div className="mx-auto max-w-3xl">
+        <div className="space-y-1">
+          <h1 className="text-lg font-bold text-brand-ink">Sửa hồ sơ công ty</h1>
+          <p className="mb-4 text-sm text-brand-ink-soft">
+            Tên công ty, logo, ảnh bìa và các thông tin giới thiệu hiển thị công khai ở trang nhà tài trợ.
+          </p>
           <PartnerProfileForm
             initialValues={{
               company_name: profile.company_name,
@@ -58,6 +63,6 @@ export function ProfileEditPage() {
           />
         </div>
       )}
-    </BreadcrumbLayout>
+    </PartnerLayout>
   )
 }

@@ -56,7 +56,7 @@ export function ProfileViewPage() {
                     )}
                   </div>
                 </div>
-                <Link to="/doi-tac/ho-so/sua">
+                <Link to="/tai-khoan/ho-so-cong-ty">
                   <Button variant="secondary" size="sm">
                     Chỉnh sửa hồ sơ
                   </Button>

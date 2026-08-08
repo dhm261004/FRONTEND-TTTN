@@ -33,7 +33,7 @@ export function ForgotPasswordPage() {
 
   return (
     <AuthLayout title="Quên mật khẩu" subtitle="Nhập email để nhận mã OTP đặt lại mật khẩu">
-      <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit(onSubmit)}>
         <Field label="Email" required error={errors.email?.message}>
           <Input type="email" placeholder="ban@congty.com" {...register('email')} error={Boolean(errors.email)} />
         </Field>

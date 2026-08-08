@@ -51,7 +51,7 @@ export function RegisterPage() {
 
   return (
     <AuthLayout title="Đăng ký tài khoản SKOLA" subtitle="Tạo tài khoản để bắt đầu hành trình cùng Skola">
-      <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit(onSubmit)}>
         <Field label="Vui lòng chọn loại đối tượng" required error={errors.role?.message}>
           <Select {...register('role')} error={Boolean(errors.role)}>
             <option value="candidate">Sinh viên</option>

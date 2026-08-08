@@ -28,6 +28,7 @@ export const MANAGEMENT_NAV: PartnerNavItem[] = [
 
 export const ACCOUNT_NAV: PartnerNavItem[] = [
   { label: 'Tài khoản', to: '/tai-khoan', icon: IconUser, supported: true },
+  { label: 'Sửa hồ sơ công ty', to: '/tai-khoan/ho-so-cong-ty', icon: IconIdCard, supported: true },
   { label: 'Mật khẩu và bảo mật', to: '/tai-khoan/bao-mat', icon: IconLock, supported: true },
   { label: 'Quản lý giao dịch', to: '/tai-khoan/giao-dich', icon: IconCreditCard, supported: false },
   { label: 'Thông báo qua email', to: '/tai-khoan/thong-bao', icon: IconMail, supported: false },

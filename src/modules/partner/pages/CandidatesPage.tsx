@@ -11,13 +11,22 @@ import { Button } from '@/shared/components/ui/Button'
 import { Modal } from '@/shared/components/ui/Modal'
 import { useToast } from '@/shared/components/ui/ToastProvider'
 import { ApplicationStatusBadge } from '@/modules/partner/components/ApplicationStatusBadge'
+import { StatCard } from '@/modules/partner/components/StatCard'
 import { usePartnerProfile } from '@/modules/partner/PartnerProfileContext'
 import { scholarshipsApi } from '@/modules/partner/api/scholarships.api'
 import { applicationsApi } from '@/modules/partner/api/applications.api'
-import type { ApplicationStatus, ApplicationWithCandidate, Scholarship } from '@/modules/partner/types'
+import { partnerProfileApi } from '@/modules/partner/api/partnerProfile.api'
+import type { ApplicationSort, ApplicationStatus, ApplicationWithCandidate, PartnerStats, Scholarship } from '@/modules/partner/types'
 import { certificateMatches, gpaRequirementCheck, majorsRequirementCheck, type RequirementResult } from '@/modules/partner/lib/requirementMatch'
 import { formatDate } from '@/shared/lib/format'
-import { IconCheckCircle, IconSearch, IconXCircle } from '@/modules/partner/components/icons'
+import {
+  IconCheckCircle,
+  IconClock,
+  IconDownload,
+  IconSearch,
+  IconWallet,
+  IconXCircle,
+} from '@/modules/partner/components/icons'
 
 const PAGE_SIZE = 10
 
@@ -26,6 +35,15 @@ const FILTER_OPTIONS: { value: ApplicationStatus | 'all'; label: string }[] = [
   { value: 'pending', label: 'Chờ xét duyệt' },
   { value: 'won', label: 'Đã được chọn' },
   { value: 'rejected', label: 'Bị từ chối' },
+]
+
+const SORT_OPTIONS: { value: ApplicationSort; label: string; requiresCertificate?: boolean }[] = [
+  { value: 'created_at_desc', label: 'Mới nộp trước' },
+  { value: 'created_at_asc', label: 'Nộp lâu nhất trước' },
+  { value: 'gpa_desc', label: 'GPA cao → thấp' },
+  { value: 'gpa_asc', label: 'GPA thấp → cao' },
+  { value: 'certificate_score_desc', label: 'Điểm chứng chỉ cao → thấp', requiresCertificate: true },
+  { value: 'certificate_score_asc', label: 'Điểm chứng chỉ thấp → cao', requiresCertificate: true },
 ]
 
 function candidateCode(candidateProfileId: string) {
@@ -40,6 +58,10 @@ export function CandidatesPage() {
   const [scholarships, setScholarships] = useState<Scholarship[] | null>(null)
   const [scholarshipId, setScholarshipId] = useState<string>(searchParams.get('scholarship_id') ?? '')
   const [filter, setFilter] = useState<ApplicationStatus | 'all'>('all')
+  const [certificateType, setCertificateType] = useState('')
+  const [minScoreInput, setMinScoreInput] = useState('')
+  const [minScore, setMinScore] = useState<number | undefined>(undefined)
+  const [sort, setSort] = useState<ApplicationSort>('created_at_desc')
   const [qInput, setQInput] = useState('')
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
@@ -49,6 +71,7 @@ export function CandidatesPage() {
   const [loading, setLoading] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [selected, setSelected] = useState<ApplicationWithCandidate | null>(null)
+  const [stats, setStats] = useState<PartnerStats | null>(null)
 
   useEffect(() => {
     if (!profile) return
@@ -72,11 +95,30 @@ export function CandidatesPage() {
   }, [qInput])
 
   useEffect(() => {
+    const t = setTimeout(() => {
+      setPage(1)
+      const parsed = Number(minScoreInput)
+      setMinScore(minScoreInput.trim() && Number.isFinite(parsed) ? parsed : undefined)
+    }, 300)
+    return () => clearTimeout(t)
+  }, [minScoreInput])
+
+  useEffect(() => {
+    if (certificateType) return
+    setMinScoreInput('')
+    setMinScore(undefined)
+    setSort((current) => (SORT_OPTIONS.find((o) => o.value === current)?.requiresCertificate ? 'created_at_desc' : current))
+  }, [certificateType])
+
+  useEffect(() => {
     if (!scholarshipId) return
     setLoading(true)
     applicationsApi
       .listForScholarship(scholarshipId, {
         status: filter === 'all' ? undefined : filter,
+        certificate_type: certificateType || undefined,
+        certificate_min_score: certificateType ? minScore : undefined,
+        sort,
         q: q || undefined,
         page,
         limit: PAGE_SIZE,
@@ -86,7 +128,13 @@ export function CandidatesPage() {
         setPages(res.pagination.pages)
       })
       .finally(() => setLoading(false))
-  }, [scholarshipId, filter, q, page])
+  }, [scholarshipId, filter, certificateType, minScore, sort, q, page])
+
+  useEffect(() => {
+    if (!scholarshipId) return
+    setStats(null)
+    partnerProfileApi.getStats({ scholarship_id: scholarshipId }).then(setStats)
+  }, [scholarshipId])
 
   const handleDecision = async (application: ApplicationWithCandidate, status: 'won' | 'rejected') => {
     setUpdatingId(application.id)
@@ -98,6 +146,16 @@ export function CandidatesPage() {
         filter === 'all'
           ? prev.map((it) => (it.id === application.id ? { ...it, status } : it))
           : prev.filter((it) => it.id !== application.id),
+      )
+      setStats((prev) =>
+        prev
+          ? {
+              ...prev,
+              pending_applications: prev.pending_applications - 1,
+              selected_applications: status === 'won' ? prev.selected_applications + 1 : prev.selected_applications,
+              rejected_applications: status === 'rejected' ? prev.rejected_applications + 1 : prev.rejected_applications,
+            }
+          : prev,
       )
     } catch {
       notify('Không thể cập nhật trạng thái hồ sơ. Vui lòng thử lại.', 'error')
@@ -127,49 +185,125 @@ export function CandidatesPage() {
         />
       ) : (
         <>
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <Select
-              className="w-72"
-              value={scholarshipId}
-              onChange={(e) => {
-                setPage(1)
-                setScholarshipId(e.target.value)
-              }}
-            >
-              {scholarships.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.title}
-                </option>
-              ))}
-            </Select>
-            <Select
-              className="w-56"
-              value={filter}
-              onChange={(e) => {
-                setPage(1)
-                setFilter(e.target.value as ApplicationStatus | 'all')
-              }}
-            >
-              {FILTER_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
-            <div className="relative min-w-[220px] flex-1">
-              <IconSearch className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                className="pl-10"
-                placeholder="Tìm theo tên, trường hoặc email"
-                value={qInput}
-                onChange={(e) => setQInput(e.target.value)}
-              />
+          <div className="mb-4 space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center gap-3">
+              <Select
+                className="w-72"
+                value={scholarshipId}
+                onChange={(e) => {
+                  setPage(1)
+                  setCertificateType('')
+                  setScholarshipId(e.target.value)
+                }}
+              >
+                {scholarships.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.title}
+                  </option>
+                ))}
+              </Select>
+              <div className="relative min-w-55 flex-1">
+                <IconSearch className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  className="pl-10"
+                  placeholder="Tìm theo tên, trường hoặc email"
+                  value={qInput}
+                  onChange={(e) => setQInput(e.target.value)}
+                />
+              </div>
             </div>
-            {selectedScholarship?.total_slots != null && (
-              <span className="shrink-0 text-sm text-brand-ink-soft">
-                Tổng số suất: <span className="font-semibold text-brand-ink">{selectedScholarship.total_slots}</span>
-              </span>
-            )}
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Select
+                className="w-52"
+                value={filter}
+                onChange={(e) => {
+                  setPage(1)
+                  setFilter(e.target.value as ApplicationStatus | 'all')
+                }}
+              >
+                {FILTER_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+
+              {(selectedScholarship?.required_certificates.length ?? 0) > 0 && (
+                <>
+                  <Select
+                    className="w-56"
+                    value={certificateType}
+                    onChange={(e) => {
+                      setPage(1)
+                      setCertificateType(e.target.value)
+                    }}
+                  >
+                    <option value="">Tất cả chứng chỉ</option>
+                    {selectedScholarship!.required_certificates.map((req) => (
+                      <option key={req.id} value={req.certificate_type}>
+                        Đã nộp: {req.certificate_type}
+                      </option>
+                    ))}
+                  </Select>
+                  {certificateType && (
+                    <Input
+                      type="number"
+                      inputMode="decimal"
+                      className="w-36"
+                      placeholder="Điểm tối thiểu"
+                      value={minScoreInput}
+                      onChange={(e) => setMinScoreInput(e.target.value)}
+                    />
+                  )}
+                </>
+              )}
+
+              <Select
+                className="w-60"
+                value={sort}
+                onChange={(e) => {
+                  setPage(1)
+                  setSort(e.target.value as ApplicationSort)
+                }}
+              >
+                {SORT_OPTIONS.filter((o) => !o.requiresCertificate || certificateType).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    Sắp xếp: {o.label}
+                  </option>
+                ))}
+              </Select>
+
+              {(filter !== 'all' || certificateType || minScoreInput || sort !== 'created_at_desc' || q) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPage(1)
+                    setFilter('all')
+                    setCertificateType('')
+                    setMinScoreInput('')
+                    setSort('created_at_desc')
+                    setQInput('')
+                    setQ('')
+                  }}
+                  className="shrink-0 text-sm text-brand-blue-600 hover:underline"
+                >
+                  Xoá bộ lọc
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <StatCard
+              icon={IconWallet}
+              tone="blue"
+              label="Tổng số suất"
+              value={selectedScholarship?.total_slots != null ? String(selectedScholarship.total_slots) : 'Không giới hạn'}
+            />
+            <StatCard icon={IconCheckCircle} tone="green" label="Đã duyệt" value={stats ? String(stats.selected_applications) : '…'} />
+            <StatCard icon={IconClock} tone="amber" label="Đang chờ" value={stats ? String(stats.pending_applications) : '…'} />
+            <StatCard icon={IconXCircle} tone="red" label="Từ chối" value={stats ? String(stats.rejected_applications) : '…'} />
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -201,10 +335,10 @@ export function CandidatesPage() {
                         onClick={() => setSelected(it)}
                         className="cursor-pointer hover:bg-slate-50"
                       >
-                        <td className="px-5 py-4 font-mono text-xs text-brand-ink-soft">
+                        <td className="px-5 py-4 font-mono text-xs font-semibold text-slate-600">
                           {candidateCode(it.candidate.candidate_profile_id)}
                         </td>
-                        <td className="max-w-[200px] px-5 py-4 font-medium text-brand-ink">
+                        <td className="max-w-[200px] px-5 py-4 font-semibold text-slate-800">
                           <div className="flex items-center gap-2">
                             <div className="size-7 shrink-0 overflow-hidden rounded-full bg-slate-200">
                               {it.candidate.avatar_url && <img src={it.candidate.avatar_url} alt="" className="size-full object-cover" />}
@@ -212,16 +346,16 @@ export function CandidatesPage() {
                             <span className="truncate">{it.candidate.full_name || it.candidate.email}</span>
                           </div>
                         </td>
-                        <td className="max-w-[180px] px-5 py-4 text-brand-ink-soft">
+                        <td className="max-w-[180px] px-5 py-4 text-slate-600">
                           <span className="truncate">{it.candidate.current_school ?? '—'}</span>
                         </td>
-                        <td className="max-w-[160px] px-5 py-4 text-brand-ink-soft">
+                        <td className="max-w-[160px] px-5 py-4 text-slate-600">
                           <span className="truncate" title={it.candidate.target_majors.join(', ')}>
                             {it.candidate.target_majors.length > 0 ? it.candidate.target_majors.join(', ') : '—'}
                           </span>
                         </td>
-                        <td className="px-5 py-4 text-brand-ink-soft">{it.candidate.gpa ?? '—'}</td>
-                        <td className="px-5 py-4 text-brand-ink-soft">{formatDate(it.created_at)}</td>
+                        <td className="px-5 py-4 font-bold text-slate-800">{it.candidate.gpa ?? '—'}</td>
+                        <td className="px-5 py-4 text-slate-500">{formatDate(it.created_at)}</td>
                         <td className="px-5 py-4">
                           <ApplicationStatusBadge status={it.status} />
                         </td>
@@ -239,121 +373,202 @@ export function CandidatesPage() {
         </>
       )}
 
+      {/* MODAL CHI TIẾT ỨNG VIÊN */}
       <Modal
         open={selected !== null}
         onClose={() => setSelected(null)}
-        size="lg"
-        title={
-          selected ? (
-            <div className="flex items-center gap-3">
-              <div className="size-10 shrink-0 overflow-hidden rounded-full bg-slate-200">
-                {selected.candidate.avatar_url && <img src={selected.candidate.avatar_url} alt="" className="size-full object-cover" />}
-              </div>
-              <span>{selected.candidate.full_name || selected.candidate.email}</span>
-            </div>
-          ) : undefined
-        }
+        size="xl"
+        title={undefined}
         footer={
           selected?.status === 'pending' ? (
-            <>
+            <div className="flex items-center justify-end gap-3 w-full">
               <Button
                 variant="danger"
                 icon={<IconXCircle className="size-4" />}
                 loading={updatingId === selected.id}
                 onClick={() => handleDecision(selected, 'rejected')}
               >
-                Từ chối
+                Từ chối hồ sơ
               </Button>
               <Button
                 icon={<IconCheckCircle className="size-4" />}
                 loading={updatingId === selected.id}
                 onClick={() => handleDecision(selected, 'won')}
               >
-                Duyệt
+                Duyệt trúng tuyển
               </Button>
-            </>
+            </div>
           ) : undefined
         }
       >
         {selected && (
-          <div className="space-y-6 text-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-mono text-xs text-brand-ink-soft">{candidateCode(selected.candidate.candidate_profile_id)}</span>
+          <div className="space-y-3 text-sm">
+            {/* DÒNG RIÊNG 1: Nút X đóng cửa sổ ở góc trên bên phải */}
+            <div className="flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                title="Đóng cửa sổ"
+                aria-label="Đóng"
+              >
+                <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* DÒNG RIÊNG 2: Banner header ứng viên */}
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center gap-3.5">
+                <div className="size-12 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-white shadow-xs">
+                  {selected.candidate.avatar_url ? (
+                    <img src={selected.candidate.avatar_url} alt="" className="size-full object-cover" />
+                  ) : (
+                    <div className="flex size-full items-center justify-center font-bold text-slate-400">
+                      {(selected.candidate.full_name || selected.candidate.email)[0]?.toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">
+                    {selected.candidate.full_name || 'Ứng viên chưa cập nhật tên'}
+                  </h2>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    <span className="font-mono font-bold text-slate-700">
+                      {candidateCode(selected.candidate.candidate_profile_id)}
+                    </span>
+                    <span>•</span>
+                    <span>Nộp ngày {formatDate(selected.created_at)}</span>
+                  </div>
+                </div>
+              </div>
+              
               <ApplicationStatusBadge status={selected.status} />
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2">
-              <section>
-                <h3 className="mb-3 text-sm font-bold text-brand-ink">Thông tin ứng viên</h3>
-                <dl className="space-y-3">
-                  <DetailRow label="Email" value={selected.candidate.email} />
-                  <DetailRow label="Trường" value={selected.candidate.current_school ?? '—'} />
-                  <DetailRow label="GPA" value={selected.candidate.gpa != null ? String(selected.candidate.gpa) : '—'} />
-                  <DetailRow label="Tỉnh / Thành phố" value={selected.candidate.province_city ?? '—'} />
-                  <DetailRow label="Hoàn cảnh tài chính" value={selected.candidate.financial_need_level ?? '—'} />
-                  <DetailRow
-                    label="Ngành mục tiêu"
-                    value={selected.candidate.target_majors.length > 0 ? selected.candidate.target_majors.join(', ') : '—'}
+            {/* Khung duy nhất bao trọn nội dung */}
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white divide-y divide-slate-200 shadow-xs">
+              
+              {/* Mục 1: Thông tin cá nhân & Học vấn */}
+              <div className="p-5 space-y-3.5">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Thông tin cá nhân & Học vấn
+                </h3>
+                <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+                  <DetailItem label="Email liên hệ" value={selected.candidate.email} />
+                  <DetailItem label="Trường đang học" value={selected.candidate.current_school ?? '—'} />
+                  <DetailItem
+                    label="Điểm GPA"
+                    value={selected.candidate.gpa != null ? String(selected.candidate.gpa) : '—'}
+                    highlight
                   />
-                  <DetailRow label="Ngày nộp" value={formatDate(selected.created_at)} />
+                  <DetailItem label="Tỉnh / Thành phố" value={selected.candidate.province_city ?? '—'} />
+                  <DetailItem label="Hoàn cảnh tài chính" value={selected.candidate.financial_need_level ?? '—'} />
+                  <DetailItem
+                    label="Ngành mục tiêu"
+                    value={
+                      selected.candidate.target_majors.length > 0
+                        ? selected.candidate.target_majors.join(', ')
+                        : '—'
+                    }
+                  />
                 </dl>
+              </div>
 
-                <div className="mt-4">
-                  <p className="mb-2 text-xs font-medium uppercase text-brand-ink-soft">Chứng chỉ đã nộp cho đơn này</p>
+              {/* Mục 2: Hồ sơ & Tài liệu đính kèm */}
+              <div className="p-5 space-y-4">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Hồ sơ & Tài liệu đính kèm
+                </h3>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <FileCard label="CV ứng tuyển" url={selected.submitted_cv_url} />
+                  <FileCard label="Bài luận cá nhân" url={selected.submitted_essay_url} />
+                </div>
+
+                <div className="pt-1">
+                  <p className="mb-2 text-xs font-bold text-slate-700">
+                    Chứng chỉ đính kèm ({selected.certificates.length}):
+                  </p>
                   {selected.certificates.length === 0 ? (
-                    <p className="text-brand-ink-soft">Ứng viên chưa nộp chứng chỉ nào cho đơn này.</p>
+                    <p className="text-xs italic text-slate-400">Ứng viên chưa nộp chứng chỉ nào cho đơn này.</p>
                   ) : (
-                    <ul className="space-y-1.5">
+                    <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {selected.certificates.map((c) => (
-                        <li key={c.id} className="flex items-center justify-between gap-3">
-                          <span className="text-brand-ink">
-                            {c.certificate_type} <span className="text-brand-ink-soft">({c.certificate_score})</span>
+                        <li
+                          key={c.id}
+                          className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2"
+                        >
+                          <span className="text-xs font-bold text-slate-800">
+                            {c.certificate_type}{' '}
+                            <span className="font-extrabold text-brand-blue-600">({c.certificate_score})</span>
                           </span>
-                          <FileLink label="Xem tệp" url={c.attachment_url} />
+                          <FileLink label="Xem minh chứng" url={c.attachment_url} />
                         </li>
                       ))}
                     </ul>
                   )}
                 </div>
+              </div>
 
-                <div className="mt-4">
-                  <p className="mb-2 text-xs font-medium uppercase text-brand-ink-soft">Hồ sơ đính kèm</p>
-                  <div className="flex flex-wrap gap-4">
-                    <FileLink label="CV đã nộp" url={selected.submitted_cv_url} />
-                    <FileLink label="Bài luận đã nộp" url={selected.submitted_essay_url} />
-                  </div>
+              {/* Mục 3: Bảng đối chiếu yêu cầu học bổng */}
+              <div className="p-5 space-y-4 bg-blue-50/20">
+                <div className="flex items-center justify-between border-b border-blue-100 pb-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Đối chiếu với yêu cầu học bổng
+                  </h3>
+                  <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-bold text-brand-blue-700">
+                    Tự động đối chiếu
+                  </span>
                 </div>
-              </section>
 
-              <section>
-                <h3 className="mb-3 text-sm font-bold text-brand-ink">Đối chiếu với yêu cầu học bổng</h3>
                 {selectedScholarship ? (
                   <div className="space-y-4">
-                    <RequirementCheck label="GPA tối thiểu" result={gpaRequirementCheck(selectedScholarship, selected.candidate.gpa)} />
-                    <RequirementCheck label="Ngành phù hợp" result={majorsRequirementCheck(selectedScholarship, selected.candidate.target_majors)} />
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <RequirementCheckCard
+                        label="Mức GPA tối thiểu"
+                        result={gpaRequirementCheck(selectedScholarship, selected.candidate.gpa)}
+                      />
+                      <RequirementCheckCard
+                        label="Ngành học phù hợp"
+                        result={majorsRequirementCheck(selectedScholarship, selected.candidate.target_majors)}
+                      />
+                    </div>
 
-                    <div>
-                      <p className="mb-1 text-xs font-medium text-brand-ink-soft">Chứng chỉ yêu cầu</p>
+                    <div className="space-y-2 pt-2 border-t border-blue-100/80">
+                      <p className="text-xs font-bold text-slate-700">Yêu cầu chứng chỉ học bổng</p>
                       {selectedScholarship.required_certificates.length === 0 ? (
-                        <p className="text-brand-ink-soft">Học bổng không yêu cầu chứng chỉ cụ thể.</p>
+                        <p className="text-xs text-slate-500">Học bổng này không yêu cầu chứng chỉ cụ thể.</p>
                       ) : (
                         <ul className="space-y-2">
                           {selectedScholarship.required_certificates.map((req) => {
-                            const match = selected.certificates.find((c) => certificateMatches(c.certificate_type, req.certificate_type))
+                            const match = selected.certificates.find((c) =>
+                              certificateMatches(c.certificate_type, req.certificate_type),
+                            )
                             return (
-                              <li key={req.id} className="flex items-start justify-between gap-3">
-                                <div className="flex items-start gap-2">
+                              <li
+                                key={req.id}
+                                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-2xs"
+                              >
+                                <div className="flex items-center gap-2">
                                   {match ? (
-                                    <IconCheckCircle className="mt-0.5 size-4 shrink-0 text-emerald-500" />
+                                    <IconCheckCircle className="size-4 shrink-0 text-emerald-500" />
                                   ) : (
-                                    <IconXCircle className="mt-0.5 size-4 shrink-0 text-red-500" />
+                                    <IconXCircle className="size-4 shrink-0 text-red-500" />
                                   )}
-                                  <span className="text-brand-ink">
+                                  <span className="text-xs font-bold text-slate-800">
                                     {req.certificate_type}
-                                    {match && <span className="text-brand-ink-soft"> — ứng viên có {match.certificate_type} ({match.certificate_score})</span>}
+                                    {match && (
+                                      <span className="text-slate-600 font-normal">
+                                        {' '}— ứng viên có:{' '}
+                                        <strong className="text-brand-blue-600 font-bold">
+                                          {match.certificate_type} ({match.certificate_score})
+                                        </strong>
+                                      </span>
+                                    )}
                                   </span>
                                 </div>
-                                {match && <FileLink label="Xem tệp" url={match.attachment_url} />}
+                                {match && <FileLink label="Xem minh chứng" url={match.attachment_url} />}
                               </li>
                             )
                           })}
@@ -362,9 +577,10 @@ export function CandidatesPage() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-brand-ink-soft">Không có thông tin học bổng.</p>
+                  <p className="text-xs text-slate-500">Không có thông tin học bổng.</p>
                 )}
-              </section>
+              </div>
+
             </div>
           </div>
         )}
@@ -373,34 +589,87 @@ export function CandidatesPage() {
   )
 }
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function DetailItem({
+  label,
+  value,
+  highlight = false,
+}: {
+  label: string
+  value: string
+  highlight?: boolean
+}) {
   return (
-    <div>
-      <dt className="text-xs text-brand-ink-soft">{label}</dt>
-      <dd className="font-medium text-brand-ink">{value}</dd>
+    <div className="rounded-lg bg-slate-50 p-3 border border-slate-200/70">
+      <dt className="text-xs font-medium text-slate-500">{label}</dt>
+      <dd className={`mt-0.5 text-xs ${highlight ? 'font-bold text-brand-blue-600 text-sm' : 'font-bold text-slate-800'}`}>
+        {value}
+      </dd>
     </div>
   )
 }
 
-function RequirementCheck({ label, result }: { label: string; result: RequirementResult }) {
+function RequirementCheckCard({ label, result }: { label: string; result: RequirementResult }) {
+  const isPass = result.status === 'pass'
+  const isFail = result.status === 'fail'
+
   return (
-    <div>
-      <p className="mb-1 text-xs font-medium text-brand-ink-soft">{label}</p>
-      <div className="flex items-start gap-2">
-        {result.status === 'pass' && <IconCheckCircle className="mt-0.5 size-4 shrink-0 text-emerald-500" />}
-        {result.status === 'fail' && <IconXCircle className="mt-0.5 size-4 shrink-0 text-red-500" />}
-        {result.status === 'neutral' && <span className="mt-1 size-2 shrink-0 rounded-full bg-slate-300" />}
-        <span className="text-brand-ink">{result.text}</span>
+    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-2xs space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-bold text-slate-800">{label}</span>
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+            isPass
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : isFail
+                ? 'bg-red-50 text-red-700 border border-red-200'
+                : 'bg-slate-100 text-slate-600 border border-slate-200'
+          }`}
+        >
+          {isPass && <IconCheckCircle className="size-3" />}
+          {isFail && <IconXCircle className="size-3" />}
+          {isPass ? 'Đạt yêu cầu' : isFail ? 'Không đạt' : 'Không bắt buộc'}
+        </span>
       </div>
+      <p className="text-xs font-medium text-slate-600 leading-snug">{result.text}</p>
     </div>
   )
 }
 
 function FileLink({ label, url }: { label: string; url: string | null }) {
-  if (!url) return <span className="text-xs text-slate-400">{label}: —</span>
+  if (!url) return <span className="text-[11px] font-medium text-slate-400">—</span>
   return (
-    <a href={url} target="_blank" rel="noreferrer" className="text-xs text-brand-blue-600 hover:underline">
-      {label}
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-1 text-xs font-bold text-brand-blue-600 hover:underline"
+    >
+      <span>{label}</span>
+    </a>
+  )
+}
+
+function FileCard({ label, url }: { label: string; url: string | null }) {
+  if (!url) {
+    return (
+      <div className="flex items-center justify-between rounded-lg border border-dashed border-slate-200 bg-slate-50/50 p-3 text-xs">
+        <span className="font-medium text-slate-500">{label}</span>
+        <span className="text-[11px] font-bold text-slate-400">Chưa nộp</span>
+      </div>
+    )
+  }
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="group flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-2xs transition-all hover:border-brand-blue-300 hover:bg-brand-blue-50/30"
+    >
+      <span className="font-bold text-slate-800 group-hover:text-brand-blue-600">{label}</span>
+      <div className="flex items-center gap-1 font-bold text-brand-blue-600">
+        <IconDownload className="size-3.5 shrink-0" />
+        <span>Tải về xem</span>
+      </div>
     </a>
   )
 }

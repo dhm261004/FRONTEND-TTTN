@@ -99,90 +99,104 @@ export function PartnerProfileForm({
   }
 
   return (
-    <form className="space-y-6 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm" onSubmit={handleSubmit(submit)}>
-      <h2 className="text-lg font-bold text-brand-ink">Thông tin nhà tài trợ</h2>
-
-      {onCoverImageSelected && <CoverImageUpload url={coverImageUrl} onUpload={onCoverImageSelected} />}
-
-      <div className="grid gap-8 md:grid-cols-[280px_1fr]">
+    <form className="w-full space-y-6 rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm" onSubmit={handleSubmit(submit)}>
+      {/* Header */}
+      <div className="flex flex-col gap-1 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
+          <h2 className="text-xl font-bold text-slate-900">Thông tin nhà tài trợ</h2>
+          <p className="text-xs text-slate-500">Cập nhật thông tin chi tiết của tổ chức</p>
+        </div>
+        <p className="text-xs font-medium text-red-500">(*) Thông tin bắt buộc</p>
+      </div>
+
+      {/* Upload Ảnh */}
+      <div className="space-y-4">
+        {onCoverImageSelected && (
+          <CoverImageUpload url={coverImageUrl} onUpload={onCoverImageSelected} />
+        )}
+
+        <div className="flex items-center gap-4">
           {onLogoSelected ? (
             <AvatarUpload url={logoUrl} onUpload={onLogoSelected} alt="Logo" label="Đổi logo" />
           ) : (
-            <div className="mx-auto size-32 overflow-hidden rounded-full bg-slate-200 md:mx-0">
+            <div className="size-20 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
               {logoUrl && <img src={logoUrl} alt="Logo" className="size-full object-cover" />}
             </div>
           )}
-
-          <Field label="Giới thiệu về nhà tài trợ" className="mt-6 block" error={errors.description?.message}>
-            <Textarea rows={7} placeholder="Giới thiệu về nhà tài trợ…" {...register('description')} />
-            <span className="mt-1 block text-right text-xs text-slate-400">{descriptionValue.length}/1500</span>
-          </Field>
+          <div>
+            <p className="text-sm font-semibold text-slate-800">Logo đại diện</p>
+            <p className="text-xs text-slate-400">Hình ảnh thương hiệu trên hệ thống</p>
+          </div>
         </div>
+      </div>
 
-        <div className="space-y-5">
-          <p className="text-xs text-red-500">(*) Các thông tin bắt buộc</p>
+      <hr className="border-slate-100" />
 
-          <Field label="Tên nhà tài trợ" required error={errors.company_name?.message}>
-            <Input placeholder="Tên nhà tài trợ" {...register('company_name')} error={Boolean(errors.company_name)} />
-          </Field>
+      {/* Danh sách các trường - Full width, khoảng cách dọc gap-4 vừa đủ */}
+      <div className="grid gap-4">
+        <Field label="Tên nhà tài trợ" required error={errors.company_name?.message}>
+          <Input placeholder="Nhập tên chính thức" {...register('company_name')} error={Boolean(errors.company_name)} />
+        </Field>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Lĩnh vực hoạt động" error={errors.industry_sector?.message}>
-              <Input placeholder="Ví dụ: Công nghệ thông tin" {...register('industry_sector')} />
-            </Field>
-            <Field label="Website" error={errors.website_url?.message}>
-              <Input placeholder="https://congty.com" {...register('website_url')} error={Boolean(errors.website_url)} />
-            </Field>
-          </div>
+        <Field label="Lĩnh vực hoạt động" error={errors.industry_sector?.message}>
+          <Input placeholder="Ví dụ: Công nghệ thông tin, Giáo dục..." {...register('industry_sector')} />
+        </Field>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Năm thành lập" error={errors.founding_year?.message}>
-              <Input type="number" placeholder="Ví dụ: 2015" {...register('founding_year')} />
-            </Field>
-            <Field label="Quy mô nhân sự" error={errors.company_size?.message}>
-              <Select {...register('company_size')}>
-                <option value="">-- Chọn quy mô --</option>
-                {COMPANY_SIZE_OPTIONS.map((size) => (
-                  <option key={size} value={size}>
-                    {size} nhân sự
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
+        <Field label="Website" error={errors.website_url?.message}>
+          <Input placeholder="https://congty.com" {...register('website_url')} error={Boolean(errors.website_url)} />
+        </Field>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Tỉnh/Thành phố (trụ sở)" error={errors.province_city?.message}>
-              <Select {...register('province_city')}>
-                <option value="">-- Chọn tỉnh/thành phố --</option>
-                {provinces.map((p) => (
-                  <option key={p.code} value={p.name}>
-                    {p.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Địa chỉ trụ sở chính" error={errors.headquarters_address?.message}>
-              <Input placeholder="Số nhà, đường..." {...register('headquarters_address')} />
-            </Field>
-          </div>
+        <Field label="Năm thành lập" error={errors.founding_year?.message}>
+          <Input type="number" placeholder="Ví dụ: 2015" {...register('founding_year')} />
+        </Field>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="LinkedIn" error={errors.linkedin_url?.message}>
-              <Input placeholder="https://linkedin.com/company/..." {...register('linkedin_url')} error={Boolean(errors.linkedin_url)} />
-            </Field>
-            <Field label="Facebook" error={errors.facebook_url?.message}>
-              <Input placeholder="https://facebook.com/..." {...register('facebook_url')} error={Boolean(errors.facebook_url)} />
-            </Field>
-          </div>
+        <Field label="Quy mô nhân sự" error={errors.company_size?.message}>
+          <Select {...register('company_size')}>
+            <option value="">-- Chọn quy mô nhân sự --</option>
+            {COMPANY_SIZE_OPTIONS.map((size) => (
+              <option key={size} value={size}>
+                {size} nhân sự
+              </option>
+            ))}
+          </Select>
+        </Field>
 
-          {serverError && <p className="text-sm text-red-500">{serverError}</p>}
+        <Field label="Tỉnh/Thành phố (Trụ sở)" error={errors.province_city?.message}>
+          <Select {...register('province_city')}>
+            <option value="">-- Chọn tỉnh/thành phố --</option>
+            {provinces.map((p) => (
+              <option key={p.code} value={p.name}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
 
-          <Button type="submit" variant="yellow" loading={isSubmitting} className="w-full md:w-auto">
-            {submitLabel}
-          </Button>
-        </div>
+        <Field label="Địa chỉ trụ sở chính" error={errors.headquarters_address?.message}>
+          <Input placeholder="Số nhà, tên đường, phường/xã..." {...register('headquarters_address')} />
+        </Field>
+
+        <Field label="Đường dẫn LinkedIn" error={errors.linkedin_url?.message}>
+          <Input placeholder="https://linkedin.com/company/..." {...register('linkedin_url')} error={Boolean(errors.linkedin_url)} />
+        </Field>
+
+        <Field label="Đường dẫn Facebook" error={errors.facebook_url?.message}>
+          <Input placeholder="https://facebook.com/..." {...register('facebook_url')} error={Boolean(errors.facebook_url)} />
+        </Field>
+
+        <Field label="Giới thiệu về nhà tài trợ" error={errors.description?.message}>
+          <Textarea rows={4} placeholder="Giới thiệu ngắn gọn về nhà tài trợ..." {...register('description')} />
+          <span className="mt-1 block text-right text-xs text-slate-400">{descriptionValue.length}/1500</span>
+        </Field>
+      </div>
+
+      {/* Action Button */}
+      <div className="border-t border-slate-100 pt-4 space-y-3">
+        {serverError && <p className="text-sm font-medium text-red-500">{serverError}</p>}
+
+        <Button type="submit" variant="yellow" loading={isSubmitting} className="w-full sm:w-auto sm:min-w-[160px]">
+          {submitLabel}
+        </Button>
       </div>
     </form>
   )

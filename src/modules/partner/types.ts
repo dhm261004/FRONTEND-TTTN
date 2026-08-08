@@ -116,9 +116,15 @@ export interface ApplicationWithCandidate {
   candidate: ApplicationCandidate
 }
 
+export type ApplicationSort =
+  | 'created_at_desc' | 'created_at_asc' | 'gpa_desc' | 'gpa_asc' | 'certificate_score_desc' | 'certificate_score_asc'
+
 export interface ScholarshipApplicationsParams {
   status?: ApplicationStatus
   q?: string
+  certificate_type?: string
+  certificate_min_score?: number
+  sort?: ApplicationSort
   page?: number
   limit?: number
 }

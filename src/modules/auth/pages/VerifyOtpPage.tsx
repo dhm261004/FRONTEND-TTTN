@@ -78,7 +78,7 @@ export function VerifyOtpPage() {
 
   return (
     <AuthLayout title="Xác thực email" subtitle={`Nhập mã OTP 6 số đã gửi tới ${email}`}>
-      <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit(onSubmit)}>
         <Field label="Mã OTP" required error={errors.otp?.message}>
           <Input
             inputMode="numeric"

@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { PartnerLayout } from '@/modules/partner/components/PartnerLayout'
 import { ACCOUNT_NAV } from '@/modules/partner/components/nav'
 import { UnsupportedNotice } from '@/shared/components/ui/UnsupportedNotice'
@@ -28,14 +27,6 @@ export function AccountSettingsPage() {
             </dd>
           </div>
         </dl>
-
-        <p className="mt-6 text-sm text-brand-ink-soft">
-          Tên công ty, logo, ảnh bìa và các thông tin công ty khác được quản lý ở{' '}
-          <Link to="/doi-tac/ho-so/sua" className="font-semibold text-brand-blue-600 hover:underline">
-            Hồ sơ nhà tài trợ
-          </Link>
-          .
-        </p>
 
         <div className="mt-6">
           <UnsupportedNotice>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { PartnerLayout } from '@/modules/partner/components/PartnerLayout'
 import { MANAGEMENT_NAV } from '@/modules/partner/components/nav'
@@ -20,6 +20,47 @@ import { IconDownload, IconSearch } from '@/modules/partner/components/icons'
 const PAGE_SIZE = 8
 
 type StatusFilter = 'all' | 'open' | 'closed'
+type SortField = 'title' | 'deadline' | 'applications_count' | 'total_budget'
+type SortOrder = 'asc' | 'desc'
+
+interface SortConfig {
+  field: SortField | null
+  order: SortOrder
+}
+
+// Icon Lịch cho Input Ngày
+function IconCalendar({ className = 'size-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.75}
+        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+      />
+    </svg>
+  )
+}
+
+// Icon Sort mũi tên
+function SortIcon({ active, order }: { active: boolean; order: SortOrder }) {
+  if (!active) {
+    return (
+      <svg className="ml-1 inline-block size-3.5 text-slate-400 opacity-0 group-hover/th:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+      </svg>
+    )
+  }
+  return order === 'asc' ? (
+    <svg className="ml-1 inline-block size-3.5 text-brand-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
+    </svg>
+  ) : (
+    <svg className="ml-1 inline-block size-3.5 text-brand-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+    </svg>
+  )
+}
 
 export function ScholarshipListPage() {
   const { profile } = usePartnerProfile()
@@ -29,8 +70,19 @@ export function ScholarshipListPage() {
   const [page, setPage] = useState(1)
   const [q, setQ] = useState('')
   const [status, setStatus] = useState<StatusFilter>('all')
+
+  // State Ngày bắt đầu & kết thúc (dạng "YYYY-MM-DD")
+  const [fromDate, setFromDate] = useState<string>('')
+  const [toDate, setToDate] = useState<string>('')
+
   const [loading, setLoading] = useState(true)
   const [byProgram, setByProgram] = useState<Record<string, PartnerStatsByProgram>>({})
+
+  // State Sắp xếp cột
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    field: null,
+    order: 'asc',
+  })
 
   useEffect(() => {
     if (!profile) return
@@ -57,34 +109,123 @@ export function ScholarshipListPage() {
     })
   }, [profile])
 
+  const handleSort = (field: SortField) => {
+    setSortConfig((prev) => {
+      if (prev.field === field) {
+        if (prev.order === 'asc') return { field, order: 'desc' }
+        return { field: null, order: 'asc' }
+      }
+      return { field, order: 'asc' }
+    })
+  }
+
+  // Danh sách đã LỌC NẰM GỌN TRONG KHOẢNG NGÀY & SẮP XẾP
+  const filteredAndSortedItems = useMemo(() => {
+    let result = [...items]
+
+    // 1. Lọc nằm gọn 2 đầu theo ngày
+    if (fromDate || toDate) {
+      // Từ 00:00:00 của ngày bắt đầu
+      const filterFromTime = fromDate ? new Date(`${fromDate}T00:00:00`).getTime() : null
+      // Đến 23:59:59 của ngày kết thúc
+      const filterToTime = toDate ? new Date(`${toDate}T23:59:59.999`).getTime() : null
+
+      result = result.filter((item) => {
+        const itemStartTime = item.start_date
+          ? new Date(item.start_date).getTime()
+          : item.deadline
+          ? new Date(item.deadline).getTime()
+          : null
+
+        const itemEndTime = item.deadline ? new Date(item.deadline).getTime() : null
+
+        if (filterFromTime !== null) {
+          if (itemStartTime === null || itemStartTime < filterFromTime) return false
+        }
+
+        if (filterToTime !== null) {
+          if (itemEndTime === null || itemEndTime > filterToTime) return false
+        }
+
+        return true
+      })
+    }
+
+    // 2. Sắp xếp
+    if (!sortConfig.field) return result
+
+    return result.sort((a, b) => {
+      let aVal: number | string = 0
+      let bVal: number | string = 0
+
+      switch (sortConfig.field) {
+        case 'title':
+          return sortConfig.order === 'asc'
+            ? (a.title || '').localeCompare(b.title || '', 'vi')
+            : (b.title || '').localeCompare(a.title || '', 'vi')
+
+        case 'deadline':
+          aVal = a.deadline ? new Date(a.deadline).getTime() : 0
+          bVal = b.deadline ? new Date(b.deadline).getTime() : 0
+          break
+
+        case 'applications_count':
+          aVal = byProgram[a.id]?.applications_count ?? 0
+          bVal = byProgram[b.id]?.applications_count ?? 0
+          break
+
+        case 'total_budget':
+          aVal = a.total_budget ?? 0
+          bVal = b.total_budget ?? 0
+          break
+      }
+
+      if (aVal < bVal) return sortConfig.order === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortConfig.order === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [items, fromDate, toDate, sortConfig, byProgram])
+
   const handleDelete = async (s: Scholarship) => {
     if (!window.confirm(`Xoá học bổng "${s.title}"? Hành động này không thể hoàn tác.`)) return
     try {
       await scholarshipsApi.remove(s.id)
-      notify('Đã xoá học bổng.')
+      notify('Đã xoá học bổng thành công.')
       setItems((prev) => prev.filter((it) => it.id !== s.id))
     } catch {
       notify('Không thể xoá học bổng. Vui lòng thử lại.', 'error')
     }
   }
 
+  const clearDateFilter = () => {
+    setFromDate('')
+    setToDate('')
+  }
+
   return (
     <PartnerLayout nav={MANAGEMENT_NAV}>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      {/* Header Trang */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-brand-ink">Quản lý học bổng</h1>
-          <p className="text-sm text-brand-ink-soft">Quản lý, tạo mới và theo dõi tất cả chương trình học bổng của bạn</p>
+          <h1 className="text-2xl font-bold tracking-tight text-brand-ink">Quản lý học bổng</h1>
+          <p className="mt-1 text-sm text-brand-ink-soft">
+            Quản lý, tạo mới và theo dõi tất cả chương trình học bổng của bạn
+          </p>
         </div>
         <Link to="/doi-tac/hoc-bong/moi">
-          <Button>Đăng tải học bổng mới</Button>
+          <Button className="shadow-sm transition-all hover:shadow">
+            Đăng tải học bổng mới
+          </Button>
         </Link>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[240px] flex-1">
+      {/* Thanh Lọc & Tìm kiếm */}
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3.5 shadow-sm">
+        {/* Tìm kiếm */}
+        <div className="relative min-w-[200px] flex-1">
           <IconSearch className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <Input
-            className="pl-10"
+            className="pl-10 h-10 rounded-xl"
             placeholder="Tìm kiếm học bổng"
             value={q}
             onChange={(e) => {
@@ -93,8 +234,10 @@ export function ScholarshipListPage() {
             }}
           />
         </div>
+
+        {/* Lọc Trạng thái */}
         <Select
-          className="w-48"
+          className="w-40 h-10 rounded-xl"
           value={status}
           onChange={(e) => {
             setPage(1)
@@ -105,8 +248,55 @@ export function ScholarshipListPage() {
           <option value="open">Đang mở đơn</option>
           <option value="closed">Đã đóng đơn</option>
         </Select>
+
+        {/* --- CHỈ CHỌN NGÀY (CHỈNH SỬA TYPE="DATE") --- */}
+        <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50/60 p-1">
+          {/* Ô chọn từ ngày */}
+          <div className="relative flex items-center">
+            <IconCalendar className="pointer-events-none absolute left-3 size-4 text-slate-400" />
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="h-9 w-[150px] rounded-lg border border-slate-200 bg-white pl-9 pr-2 text-xs font-medium text-slate-700 shadow-2xs transition-all focus:border-brand-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue-500/20"
+              title="Từ ngày"
+            />
+          </div>
+
+          <span className="text-xs font-semibold text-slate-400 px-0.5">→</span>
+
+          {/* Ô chọn đến ngày */}
+          <div className="relative flex items-center">
+            <IconCalendar className="pointer-events-none absolute left-3 size-4 text-slate-400" />
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="h-9 w-[150px] rounded-lg border border-slate-200 bg-white pl-9 pr-2 text-xs font-medium text-slate-700 shadow-2xs transition-all focus:border-brand-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue-500/20"
+              title="Đến ngày"
+            />
+          </div>
+
+          {/* Nút xóa nhanh khi đã chọn ngày */}
+          {(fromDate || toDate) && (
+            <button
+              type="button"
+              onClick={clearDateFilter}
+              className="ml-1 flex h-7 items-center gap-1 rounded-md bg-slate-200/80 px-2 text-xs font-medium text-slate-600 transition-all hover:bg-red-100 hover:text-red-600"
+              title="Xóa bộ lọc ngày"
+            >
+              <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span>Xóa</span>
+            </button>
+          )}
+        </div>
+
+        {/* Nút Xuất báo cáo */}
         <Button
           variant="secondary"
+          className="ml-auto h-10 rounded-xl"
           icon={<IconDownload className="size-4" />}
           onClick={() => notify('Xuất báo cáo chưa được hỗ trợ ở phiên bản hiện tại.', 'error')}
         >
@@ -114,13 +304,20 @@ export function ScholarshipListPage() {
         </Button>
       </div>
 
+      {/* Bảng Dữ liệu */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {loading ? (
-          <Spinner />
-        ) : items.length === 0 ? (
+          <div className="flex h-64 items-center justify-center">
+            <Spinner />
+          </div>
+        ) : filteredAndSortedItems.length === 0 ? (
           <EmptyState
-            title="Chưa có học bổng nào"
-            description="Đăng học bổng đầu tiên để bắt đầu tiếp cận ứng viên."
+            title="Không tìm thấy học bổng"
+            description={
+              fromDate || toDate || status !== 'all' || q
+                ? 'Không có học bổng nào nằm gọn hoàn toàn trong khoảng ngày đã chọn.'
+                : 'Đăng học bổng đầu tiên để bắt đầu tiếp cận ứng viên.'
+            }
             action={
               <Link to="/doi-tac/hoc-bong/moi">
                 <Button size="sm">Đăng tải học bổng mới</Button>
@@ -132,71 +329,120 @@ export function ScholarshipListPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-brand-blue-50/60 text-brand-ink-soft">
                 <tr>
-                  <th className="px-5 py-3 font-medium">Tên</th>
-                  <th className="px-5 py-3 font-medium">Thời gian</th>
-                  <th className="px-5 py-3 font-medium">Ảnh</th>
-                  <th className="px-5 py-3 font-medium">Tổng ngân sách</th>
-                  <th className="px-5 py-3 font-medium">Số hồ sơ ứng tuyển</th>
-                  <th className="px-5 py-3 font-medium">Thao tác</th>
+                  {/* Cột Title */}
+                  <th 
+                    onClick={() => handleSort('title')}
+                    className="group/th px-5 py-3.5 font-medium cursor-pointer select-none hover:bg-brand-blue-100/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Chương trình học bổng</span>
+                      <SortIcon active={sortConfig.field === 'title'} order={sortConfig.order} />
+                    </div>
+                  </th>
+
+                  {/* Cột Deadline */}
+                  <th 
+                    onClick={() => handleSort('deadline')}
+                    className="group/th px-5 py-3.5 font-medium cursor-pointer select-none hover:bg-brand-blue-100/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>Thời gian & Trạng thái</span>
+                      <SortIcon active={sortConfig.field === 'deadline'} order={sortConfig.order} />
+                    </div>
+                  </th>
+
+                  {/* Cột Applications */}
+                  <th 
+                    onClick={() => handleSort('applications_count')}
+                    className="group/th px-5 py-3.5 font-medium text-center cursor-pointer select-none hover:bg-brand-blue-100/40 transition-colors"
+                  >
+                    <div className="flex items-center justify-center gap-1">
+                      <span>Số hồ sơ ứng tuyển</span>
+                      <SortIcon active={sortConfig.field === 'applications_count'} order={sortConfig.order} />
+                    </div>
+                  </th>
+
+                  {/* Cột Budget */}
+                  <th 
+                    onClick={() => handleSort('total_budget')}
+                    className="group/th px-5 py-3.5 font-medium text-right cursor-pointer select-none hover:bg-brand-blue-100/40 transition-colors"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      <span>Tổng ngân sách</span>
+                      <SortIcon active={sortConfig.field === 'total_budget'} order={sortConfig.order} />
+                    </div>
+                  </th>
+
+                  {/* Thao tác */}
+                  <th className="px-5 py-3.5 font-medium text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {items.map((s) => (
-                  <tr key={s.id}>
-                    <td className="max-w-xs px-5 py-4 font-medium text-brand-ink">
-                      <span className="truncate">{s.title}</span>
-                    </td>
-                    <td className="px-5 py-4 text-brand-ink-soft">
-                      <div>{s.start_date ? `${formatDate(s.start_date)} – ${formatDate(s.deadline)}` : `Hạn nộp: ${formatDate(s.deadline)}`}</div>
-                      <div className="mt-1">
-                        <ScholarshipStatusBadge scholarship={s} />
-                      </div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
-                        {s.image_url ? (
-                          <img src={s.image_url} alt="" className="size-full object-cover" />
-                        ) : (
-                          <span className="text-xs text-slate-400">—</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-brand-ink-soft">{formatCurrencyVnd(s.total_budget)}</td>
-                    <td className="px-5 py-4 text-brand-ink-soft">
-                      {byProgram[s.id] ? byProgram[s.id].applications_count : '—'}
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <Link
-                          to={`/doi-tac/ho-so-ung-vien?scholarship_id=${s.id}`}
-                          className="text-brand-blue-600 hover:underline"
-                        >
-                          Ứng viên
-                        </Link>
-                        <Link
-                          to={`/doi-tac/hoc-bong/${s.id}/sua`}
-                          className="text-brand-blue-600 hover:underline"
-                          aria-label="Chỉnh sửa"
-                        >
-                          Sửa
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(s)}
-                          className="text-red-500 hover:underline"
-                        >
-                          Xoá
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filteredAndSortedItems.map((s) => {
+                  const appsCount = byProgram[s.id]?.applications_count ?? '—'
+                  return (
+                    <tr key={s.id} className="transition-colors hover:bg-slate-50/60">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 border border-slate-200/60">
+                            {s.image_url ? (
+                              <img src={s.image_url} alt="" className="size-full object-cover" />
+                            ) : (
+                              <span className="text-xs text-slate-400">—</span>
+                            )}
+                          </div>
+                          <span className="font-medium text-brand-ink truncate max-w-xs sm:max-w-sm">
+                            {s.title}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="px-5 py-4 whitespace-nowrap">
+                        <div className="flex flex-col gap-1 items-start">
+                          <ScholarshipStatusBadge scholarship={s} />
+                          <span className="text-xs text-brand-ink-soft">
+                            {s.start_date 
+                              ? `${formatDate(s.start_date)} – ${formatDate(s.deadline)}` 
+                              : `Hạn nộp: ${formatDate(s.deadline)}`}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="px-5 py-4 text-center whitespace-nowrap text-brand-ink-soft font-medium">
+                        {appsCount}
+                      </td>
+
+                      <td className="px-5 py-4 text-right whitespace-nowrap text-brand-ink-soft">
+                        {formatCurrencyVnd(s.total_budget)}
+                      </td>
+
+                      <td className="px-5 py-4 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center justify-end gap-3">
+                          <Link
+                            to={`/doi-tac/hoc-bong/${s.id}/sua`}
+                            className="text-brand-blue-600 hover:underline font-medium"
+                          >
+                            Sửa
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(s)}
+                            className="text-red-500 hover:underline font-medium"
+                          >
+                            Xoá
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
+      {/* Phân trang */}
       <div className="mt-6">
         <Pagination page={page} pages={pages} onChange={setPage} />
       </div>

@@ -52,7 +52,7 @@ export function ResetPasswordPage() {
 
   return (
     <AuthLayout title="Đặt lại mật khẩu" subtitle="Nhập mã OTP đã nhận được qua email và mật khẩu mới">
-      <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit(onSubmit)}>
         <Field label="Email" required error={errors.email?.message}>
           <Input type="email" {...register('email')} error={Boolean(errors.email)} />
         </Field>

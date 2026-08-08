@@ -52,7 +52,7 @@ export function LoginPage() {
 
   return (
     <LoginLayout title="Chào mừng bạn đến với SKOLA" subtitle="Đăng nhập để tiếp tục">
-      <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit(onSubmit)}>
         <Field label="Email" required error={errors.email?.message}>
           <Input type="email" placeholder="Nhập email" {...register('email')} error={Boolean(errors.email)} />
         </Field>

@@ -14,10 +14,21 @@ import { ScholarshipListPage as PartnerScholarshipListPage } from '@/modules/par
 import { ScholarshipFormPage } from '@/modules/partner/pages/ScholarshipFormPage'
 import { CandidatesPage } from '@/modules/partner/pages/CandidatesPage'
 import { ProfileViewPage } from '@/modules/partner/pages/ProfileViewPage'
-import { ProfileEditPage } from '@/modules/partner/pages/ProfileEditPage'
 import { CreatePartnerProfilePage } from '@/modules/partner/pages/CreatePartnerProfilePage'
 import { UnsupportedFeaturePage } from '@/modules/partner/pages/UnsupportedFeaturePage'
 import { MANAGEMENT_NAV } from '@/modules/partner/components/nav'
+import { MentorProfileProvider } from '@/modules/mentor/MentorProfileContext'
+import { CreateMentorProfilePage } from '@/modules/mentor/pages/CreateMentorProfilePage'
+import { AccountSettingsPage as MentorAccountSettingsPage } from '@/modules/mentor/pages/AccountSettingsPage'
+import { SecurityPage as MentorSecurityPage } from '@/modules/mentor/pages/SecurityPage'
+import { ProfileEditPage as MentorProfileEditPage } from '@/modules/mentor/pages/ProfileEditPage'
+import { ServicesPage as MentorServicesPage } from '@/modules/mentor/pages/ServicesPage'
+import { ServiceFormPage as MentorServiceFormPage } from '@/modules/mentor/pages/ServiceFormPage'
+import { IncomePage as MentorIncomePage } from '@/modules/mentor/pages/IncomePage'
+import { ReviewsPage as MentorReviewsPage } from '@/modules/mentor/pages/ReviewsPage'
+import { SchedulePage as MentorSchedulePage } from '@/modules/mentor/pages/SchedulePage'
+import { StudentsPage as MentorStudentsPage } from '@/modules/mentor/pages/StudentsPage'
+import { StudentProfilePage as MentorStudentProfilePage } from '@/modules/mentor/pages/StudentProfilePage'
 import { ScholarshipListPage } from '@/modules/scholarships/pages/ScholarshipListPage'
 import { ScholarshipDetailPage } from '@/modules/scholarships/pages/ScholarshipDetailPage'
 import { SponsorProfilePage } from '@/modules/scholarships/pages/SponsorProfilePage'
@@ -35,9 +46,20 @@ function PartnerScope() {
   )
 }
 
+function MentorScope() {
+  return (
+    <ProtectedRoute roles={['mentor']}>
+      <MentorProfileProvider>
+        <Outlet />
+      </MentorProfileProvider>
+    </ProtectedRoute>
+  )
+}
+
 function RootRedirect() {
   const { isAuthenticated, user } = useAuth()
   if (isAuthenticated && user?.role === 'partner') return <Navigate to="/doi-tac" replace />
+  if (isAuthenticated && user?.role === 'mentor') return <Navigate to="/co-van" replace />
   return <ScholarshipListPage />
 }
 
@@ -101,14 +123,23 @@ function AppRoutes() {
             </RequirePartnerProfile>
           }
         />
-        <Route
-          path="/doi-tac/ho-so/sua"
-          element={
-            <RequirePartnerProfile>
-              <ProfileEditPage />
-            </RequirePartnerProfile>
-          }
-        />
+        <Route path="/doi-tac/ho-so/sua" element={<Navigate to="/tai-khoan/ho-so-cong-ty" replace />} />
+      </Route>
+
+      <Route element={<MentorScope />}>
+        <Route path="/co-van/ho-so/tao" element={<CreateMentorProfilePage />} />
+
+        <Route path="/co-van" element={<MentorAccountSettingsPage />} />
+        <Route path="/co-van/bao-mat" element={<MentorSecurityPage />} />
+        <Route path="/co-van/thu-nhap" element={<MentorIncomePage />} />
+        <Route path="/co-van/dich-vu" element={<MentorServicesPage />} />
+        <Route path="/co-van/dich-vu/moi" element={<MentorServiceFormPage />} />
+        <Route path="/co-van/dich-vu/:id/sua" element={<MentorServiceFormPage />} />
+        <Route path="/co-van/sinh-vien" element={<MentorStudentsPage />} />
+        <Route path="/co-van/sinh-vien/:candidateProfileId" element={<MentorStudentProfilePage />} />
+        <Route path="/co-van/ho-so" element={<MentorProfileEditPage />} />
+        <Route path="/co-van/danh-gia" element={<MentorReviewsPage />} />
+        <Route path="/co-van/lich" element={<MentorSchedulePage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

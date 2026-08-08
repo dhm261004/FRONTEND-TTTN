@@ -458,7 +458,7 @@ export function ScholarshipFormPage() {
             </Field>
           </div>
           <div className="mt-5">
-            <Checkbox label="Hiển thị công khai ngay sau khi lưu" {...register('is_active')} />
+            <Checkbox label="Mở đơn/Đóng đơn" {...register('is_active')} />
           </div>
         </section>
 
