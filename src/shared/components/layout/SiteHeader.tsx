@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Logo } from '@/shared/components/layout/Logo'
+import { CartButton } from '@/modules/mentors/cart/CartButton'
+import { NotificationButton } from '@/modules/notifications/components/NotificationButton'
 import { cn } from '@/shared/lib/cn'
 
 interface NavItem {
@@ -52,13 +54,9 @@ export function SiteHeader({ navItems = [], userLabel, onLogout, accountTo = '/t
         <div className="flex items-center gap-3">
           {rightContent ?? (
             <>
-              <button
-                type="button"
-                aria-label="Thông báo"
-                className="flex size-10 items-center justify-center rounded-full bg-slate-100 text-brand-ink-soft hover:bg-slate-200"
-              >
-                <BellIcon />
-              </button>
+              <NotificationButton />
+
+              <CartButton />
 
               <div className="relative">
                 <button
@@ -104,15 +102,6 @@ export function SiteHeader({ navItems = [], userLabel, onLogout, accountTo = '/t
         </div>
       </div>
     </header>
-  )
-}
-
-function BellIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M13.73 21a2 2 0 0 1-3.46 0" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   )
 }
 

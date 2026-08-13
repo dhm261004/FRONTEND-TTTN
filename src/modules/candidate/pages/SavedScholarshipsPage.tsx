@@ -62,7 +62,7 @@ export function SavedScholarshipsPage() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="flex flex-col gap-4">
           {rows.map(({ interaction, scholarship }) => (
             <ScholarshipCard
               key={interaction.id}

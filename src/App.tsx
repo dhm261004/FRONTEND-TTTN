@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/modules/auth/AuthContext'
+import { getPostLoginRedirect } from '@/modules/auth/redirect'
 import { LoginPage } from '@/modules/auth/pages/LoginPage'
 import { RegisterPage } from '@/modules/auth/pages/RegisterPage'
 import { VerifyOtpPage } from '@/modules/auth/pages/VerifyOtpPage'
@@ -8,12 +9,12 @@ import { ResetPasswordPage } from '@/modules/auth/pages/ResetPasswordPage'
 import { ProtectedRoute } from '@/app/ProtectedRoute'
 import { AccountScope } from '@/app/AccountScope'
 import { PartnerProfileProvider } from '@/modules/partner/PartnerProfileContext'
-import { RequirePartnerProfile } from '@/modules/partner/components/RequirePartnerProfile'
 import { DashboardPage } from '@/modules/partner/pages/DashboardPage'
 import { ScholarshipListPage as PartnerScholarshipListPage } from '@/modules/partner/pages/ScholarshipListPage'
 import { ScholarshipFormPage } from '@/modules/partner/pages/ScholarshipFormPage'
 import { CandidatesPage } from '@/modules/partner/pages/CandidatesPage'
-import { ProfileViewPage } from '@/modules/partner/pages/ProfileViewPage'
+import { ProfileEditPage } from '@/modules/partner/pages/ProfileEditPage'
+import { SecurityPage as PartnerSecurityPage } from '@/modules/partner/pages/SecurityPage'
 import { CreatePartnerProfilePage } from '@/modules/partner/pages/CreatePartnerProfilePage'
 import { UnsupportedFeaturePage } from '@/modules/partner/pages/UnsupportedFeaturePage'
 import { MANAGEMENT_NAV } from '@/modules/partner/components/nav'
@@ -33,7 +34,12 @@ import { ScholarshipListPage } from '@/modules/scholarships/pages/ScholarshipLis
 import { ScholarshipDetailPage } from '@/modules/scholarships/pages/ScholarshipDetailPage'
 import { SponsorProfilePage } from '@/modules/scholarships/pages/SponsorProfilePage'
 import { ApplicationPage } from '@/modules/scholarships/pages/ApplicationPage'
-import { MentorComingSoonPage } from '@/modules/scholarships/pages/MentorComingSoonPage'
+import { MentorListPage } from '@/modules/mentors/pages/MentorListPage'
+import { MentorDetailPage } from '@/modules/mentors/pages/MentorDetailPage'
+import { MentorServiceCheckoutPage } from '@/modules/mentors/pages/MentorServiceCheckoutPage'
+import { HomePage } from '@/modules/home/pages/HomePage'
+import { CartPage } from '@/modules/mentors/cart/CartPage'
+import { CartProvider } from '@/modules/mentors/cart/CartContext'
 import { ToastProvider } from '@/shared/components/ui/ToastProvider'
 
 function PartnerScope() {
@@ -58,9 +64,11 @@ function MentorScope() {
 
 function RootRedirect() {
   const { isAuthenticated, user } = useAuth()
-  if (isAuthenticated && user?.role === 'partner') return <Navigate to="/doi-tac" replace />
-  if (isAuthenticated && user?.role === 'mentor') return <Navigate to="/co-van" replace />
-  return <ScholarshipListPage />
+  if (isAuthenticated && user) {
+    const redirectTo = getPostLoginRedirect(user)
+    if (redirectTo !== '/') return <Navigate to={redirectTo} replace />
+  }
+  return <HomePage />
 }
 
 function AppRoutes() {
@@ -85,7 +93,24 @@ function AppRoutes() {
         }
       />
       <Route path="/nha-tai-tro/:id" element={<SponsorProfilePage />} />
-      <Route path="/mentor" element={<MentorComingSoonPage />} />
+      <Route path="/mentor" element={<MentorListPage />} />
+      <Route path="/mentor/:id" element={<MentorDetailPage />} />
+      <Route
+        path="/mentor/:mentorId/goi/:serviceId/dat-mua"
+        element={
+          <ProtectedRoute roles={['candidate']}>
+            <MentorServiceCheckoutPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/gio-hang"
+        element={
+          <ProtectedRoute roles={['candidate']}>
+            <CartPage />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/tai-khoan/*"
@@ -115,15 +140,9 @@ function AppRoutes() {
           }
         />
 
-        <Route
-          path="/doi-tac/ho-so"
-          element={
-            <RequirePartnerProfile>
-              <ProfileViewPage />
-            </RequirePartnerProfile>
-          }
-        />
-        <Route path="/doi-tac/ho-so/sua" element={<Navigate to="/tai-khoan/ho-so-cong-ty" replace />} />
+        <Route path="/doi-tac/ho-so" element={<ProfileEditPage />} />
+        <Route path="/doi-tac/ho-so/sua" element={<Navigate to="/doi-tac/ho-so" replace />} />
+        <Route path="/doi-tac/bao-mat" element={<PartnerSecurityPage />} />
       </Route>
 
       <Route element={<MentorScope />}>
@@ -152,7 +171,9 @@ function App() {
     <BrowserRouter>
       <ToastProvider>
         <AuthProvider>
-          <AppRoutes />
+          <CartProvider>
+            <AppRoutes />
+          </CartProvider>
         </AuthProvider>
       </ToastProvider>
     </BrowserRouter>

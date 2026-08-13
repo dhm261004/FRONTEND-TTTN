@@ -32,4 +32,6 @@ export const partnerProfileApi = {
   getPublic: (id: string) => http.get<PartnerProfile>(`/partners/${id}`).then((r) => r.data),
   getStats: (params?: PartnerStatsParams) =>
     http.get<PartnerStats>('/partners/me/stats', { params }).then((r) => r.data),
+  exportStats: (params?: PartnerStatsParams) =>
+    http.get('/partners/me/stats/export', { params, responseType: 'blob' }).then((r) => r.data as Blob),
 }

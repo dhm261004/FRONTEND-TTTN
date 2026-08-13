@@ -4,7 +4,7 @@ import { MentorLayout } from '@/modules/mentor/components/MentorLayout'
 import { mentorPurchasesApi } from '@/modules/mentor/api/mentorPurchases.api'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
-import { formatCurrencyVnd, formatDate } from '@/shared/lib/format'
+import { formatCurrencyVnd } from '@/shared/lib/format'
 import type { MentorPurchaseCandidate, MentorServicePurchaseWithCandidate } from '@/modules/mentor/types'
 
 const FETCH_LIMIT = 100
@@ -86,8 +86,6 @@ export function StudentsPage() {
                   <p className="font-medium text-brand-ink">{formatCurrencyVnd(s.totalSpent)}</p>
                 </div>
               </div>
-              <p className="mt-3 truncate text-xs text-brand-ink-soft">Gói: {s.serviceNames.join(', ')}</p>
-              <p className="mt-1 text-xs text-brand-ink-soft">Mua gần nhất: {formatDate(s.lastPurchasedAt)}</p>
             </Link>
           ))}
         </div>

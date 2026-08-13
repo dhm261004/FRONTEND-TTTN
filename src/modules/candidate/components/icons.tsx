@@ -63,3 +63,38 @@ export const IconMail = (p: SVGProps<SVGSVGElement>) => (
     <path d="m4 7 8 6 8-6" strokeLinecap="round" strokeLinejoin="round" />
   </Icon>
 )
+
+export const IconPackage = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="m3 7 9-4 9 4-9 4-9-4Z" strokeLinejoin="round" />
+    <path d="M3 7v10l9 4 9-4V7M12 11v10" strokeLinecap="round" strokeLinejoin="round" />
+  </Icon>
+)
+
+export const IconCalendar = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M8 3v4M16 3v4M3 10h18" strokeLinecap="round" />
+    <path d="M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01" strokeLinecap="round" />
+  </Icon>
+)
+
+export const IconPlusCircle = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 8v8M8 12h8" strokeLinecap="round" />
+  </Icon>
+)
+
+export const IconAward = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <circle cx="12" cy="9" r="5.5" />
+    <path d="m8.5 13.5-1.5 6 5-2.5 5 2.5-1.5-6" strokeLinecap="round" strokeLinejoin="round" />
+  </Icon>
+)
+
+export const IconX = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="m6 6 12 12M18 6 6 18" strokeLinecap="round" />
+  </Icon>
+)

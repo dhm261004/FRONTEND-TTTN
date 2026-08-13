@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { PublicHeader } from '@/modules/scholarships/components/PublicHeader'
 import { SiteFooter } from '@/shared/components/layout/SiteFooter'
@@ -8,6 +8,7 @@ import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { UnsupportedNotice } from '@/shared/components/ui/UnsupportedNotice'
 import { partnersApi } from '@/modules/scholarships/api/partners.api'
 import { scholarshipsApi } from '@/modules/scholarships/api/scholarships.api'
+import { IconAward, IconBriefcase, IconCalendarClock, IconMapPin, IconUsers } from '@/modules/mentor/components/icons'
 import type { PartnerProfile, Scholarship } from '@/modules/scholarships/types'
 
 export function SponsorProfilePage() {
@@ -112,7 +113,7 @@ export function SponsorProfilePage() {
               {scholarships.length === 0 ? (
                 <EmptyState title="Chưa có học bổng đang mở" />
               ) : (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-4">
                   {scholarships.map((s) => (
                     <ScholarshipCard key={s.id} scholarship={s} />
                   ))}
@@ -124,44 +125,43 @@ export function SponsorProfilePage() {
           <aside className="w-full shrink-0 space-y-4 lg:w-[280px]">
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="mb-3 font-bold text-brand-ink">Thông tin chung</h2>
-              <dl className="space-y-3 text-sm">
+              <div className="space-y-3">
                 {partner.industry_sector && (
-                  <div>
-                    <dt className="text-xs text-brand-ink-soft">Lĩnh vực hoạt động</dt>
-                    <dd className="font-medium text-brand-ink">{partner.industry_sector}</dd>
-                  </div>
+                  <InfoRow icon={<IconBriefcase className="size-4" />} label="Lĩnh vực hoạt động" value={partner.industry_sector} />
                 )}
                 {partner.founding_year && (
-                  <div>
-                    <dt className="text-xs text-brand-ink-soft">Năm thành lập</dt>
-                    <dd className="font-medium text-brand-ink">{partner.founding_year}</dd>
-                  </div>
+                  <InfoRow icon={<IconCalendarClock className="size-4" />} label="Năm thành lập" value={String(partner.founding_year)} />
                 )}
                 {partner.company_size && (
-                  <div>
-                    <dt className="text-xs text-brand-ink-soft">Quy mô nhân sự</dt>
-                    <dd className="font-medium text-brand-ink">{partner.company_size} nhân sự</dd>
-                  </div>
+                  <InfoRow icon={<IconUsers className="size-4" />} label="Quy mô nhân sự" value={`${partner.company_size} nhân sự`} />
                 )}
                 {(partner.headquarters_address || partner.province_city) && (
-                  <div>
-                    <dt className="text-xs text-brand-ink-soft">Trụ sở chính</dt>
-                    <dd className="font-medium text-brand-ink">
-                      {[partner.headquarters_address, partner.province_city].filter(Boolean).join(', ')}
-                    </dd>
-                  </div>
+                  <InfoRow
+                    icon={<IconMapPin className="size-4" />}
+                    label="Trụ sở chính"
+                    value={[partner.headquarters_address, partner.province_city].filter(Boolean).join(', ')}
+                  />
                 )}
-                <div>
-                  <dt className="text-xs text-brand-ink-soft">Số học bổng đang mở</dt>
-                  <dd className="font-medium text-brand-ink">{scholarships.length}</dd>
-                </div>
-              </dl>
+                <InfoRow icon={<IconAward className="size-4" />} label="Số học bổng đang mở" value={String(scholarships.length)} />
+              </div>
             </div>
           </aside>
         </div>
       </div>
 
       <SiteFooter />
+    </div>
+  )
+}
+
+function InfoRow({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-blue-50 text-brand-blue-600">{icon}</span>
+      <div className="min-w-0 pt-0.5">
+        <p className="text-xs text-brand-ink-soft">{label}</p>
+        <p className="text-sm font-semibold text-brand-ink">{value}</p>
+      </div>
     </div>
   )
 }

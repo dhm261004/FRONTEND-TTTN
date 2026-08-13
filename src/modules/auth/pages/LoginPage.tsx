@@ -4,7 +4,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { LoginLayout } from '@/modules/auth/components/LoginLayout'
+import { GoogleLoginButton } from '@/modules/auth/components/GoogleLoginButton'
 import { useAuth } from '@/modules/auth/AuthContext'
+import { getPostLoginRedirect } from '@/modules/auth/redirect'
 import { Field } from '@/shared/components/ui/Field'
 import { Input } from '@/shared/components/ui/Input'
 import { Button } from '@/shared/components/ui/Button'
@@ -33,8 +35,7 @@ export function LoginPage() {
     setServerError(null)
     try {
       const user = await login(values)
-      const fallback = user.role === 'partner' ? '/doi-tac' : '/'
-      const redirectTo = (location.state as { from?: string } | null)?.from ?? fallback
+      const redirectTo = (location.state as { from?: string } | null)?.from ?? getPostLoginRedirect(user)
       navigate(redirectTo, { replace: true })
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
@@ -72,6 +73,14 @@ export function LoginPage() {
           Đăng nhập
         </Button>
       </form>
+
+      <div className="my-6 flex items-center gap-3">
+        <div className="h-px flex-1 bg-slate-200" />
+        <span className="text-xs font-medium text-brand-ink-soft">Hoặc</span>
+        <div className="h-px flex-1 bg-slate-200" />
+      </div>
+
+      <GoogleLoginButton />
 
       <p className="mt-6 text-center text-sm text-brand-ink-soft">
         Bạn chưa có tài khoản?{' '}

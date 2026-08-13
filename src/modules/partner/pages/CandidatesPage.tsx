@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PartnerLayout } from '@/modules/partner/components/PartnerLayout'
 import { MANAGEMENT_NAV } from '@/modules/partner/components/nav'
@@ -9,6 +9,8 @@ import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Pagination } from '@/shared/components/ui/Pagination'
 import { Button } from '@/shared/components/ui/Button'
 import { Modal } from '@/shared/components/ui/Modal'
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '@/shared/components/ui/Table'
+import { CheckboxFilterDropdown } from '@/shared/components/ui/CheckboxFilterDropdown'
 import { useToast } from '@/shared/components/ui/ToastProvider'
 import { ApplicationStatusBadge } from '@/modules/partner/components/ApplicationStatusBadge'
 import { StatCard } from '@/modules/partner/components/StatCard'
@@ -19,6 +21,7 @@ import { partnerProfileApi } from '@/modules/partner/api/partnerProfile.api'
 import type { ApplicationSort, ApplicationStatus, ApplicationWithCandidate, PartnerStats, Scholarship } from '@/modules/partner/types'
 import { certificateMatches, gpaRequirementCheck, majorsRequirementCheck, type RequirementResult } from '@/modules/partner/lib/requirementMatch'
 import { formatDate } from '@/shared/lib/format'
+import { downloadBlob } from '@/shared/lib/download'
 import {
   IconCheckCircle,
   IconClock,
@@ -30,11 +33,10 @@ import {
 
 const PAGE_SIZE = 10
 
-const FILTER_OPTIONS: { value: ApplicationStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'Tất cả trạng thái' },
-  { value: 'pending', label: 'Chờ xét duyệt' },
-  { value: 'won', label: 'Đã được chọn' },
-  { value: 'rejected', label: 'Bị từ chối' },
+const STATUS_OPTIONS = [
+  { value: 'pending', label: 'Chờ xét duyệt', dotClassName: 'bg-amber-500' },
+  { value: 'won', label: 'Đã được chọn', dotClassName: 'bg-emerald-500' },
+  { value: 'rejected', label: 'Bị từ chối', dotClassName: 'bg-red-500' },
 ]
 
 const SORT_OPTIONS: { value: ApplicationSort; label: string; requiresCertificate?: boolean }[] = [
@@ -57,7 +59,9 @@ export function CandidatesPage() {
 
   const [scholarships, setScholarships] = useState<Scholarship[] | null>(null)
   const [scholarshipId, setScholarshipId] = useState<string>(searchParams.get('scholarship_id') ?? '')
-  const [filter, setFilter] = useState<ApplicationStatus | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<string[]>([])
+  // API chỉ nhận đúng 1 giá trị status; chọn 0 hoặc từ 2 trạng thái trở lên nghĩa là không lọc.
+  const apiStatusFilter = statusFilter.length === 1 ? (statusFilter[0] as ApplicationStatus) : undefined
   const [certificateType, setCertificateType] = useState('')
   const [minScoreInput, setMinScoreInput] = useState('')
   const [minScore, setMinScore] = useState<number | undefined>(undefined)
@@ -72,6 +76,7 @@ export function CandidatesPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [selected, setSelected] = useState<ApplicationWithCandidate | null>(null)
   const [stats, setStats] = useState<PartnerStats | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     if (!profile) return
@@ -115,7 +120,7 @@ export function CandidatesPage() {
     setLoading(true)
     applicationsApi
       .listForScholarship(scholarshipId, {
-        status: filter === 'all' ? undefined : filter,
+        status: apiStatusFilter,
         certificate_type: certificateType || undefined,
         certificate_min_score: certificateType ? minScore : undefined,
         sort,
@@ -128,7 +133,7 @@ export function CandidatesPage() {
         setPages(res.pagination.pages)
       })
       .finally(() => setLoading(false))
-  }, [scholarshipId, filter, certificateType, minScore, sort, q, page])
+  }, [scholarshipId, apiStatusFilter, certificateType, minScore, sort, q, page])
 
   useEffect(() => {
     if (!scholarshipId) return
@@ -143,7 +148,7 @@ export function CandidatesPage() {
       notify(status === 'won' ? 'Đã duyệt hồ sơ ứng viên.' : 'Đã từ chối hồ sơ ứng viên.')
       setSelected(null)
       setItems((prev) =>
-        filter === 'all'
+        apiStatusFilter === undefined
           ? prev.map((it) => (it.id === application.id ? { ...it, status } : it))
           : prev.filter((it) => it.id !== application.id),
       )
@@ -164,6 +169,25 @@ export function CandidatesPage() {
     }
   }
 
+  const handleExport = async () => {
+    if (!scholarshipId) return
+    setExporting(true)
+    try {
+      const blob = await applicationsApi.exportForScholarship(scholarshipId, {
+        status: apiStatusFilter,
+        certificate_type: certificateType || undefined,
+        certificate_min_score: certificateType ? minScore : undefined,
+        sort,
+        q: q || undefined,
+      })
+      downloadBlob(blob, `ung-vien-${scholarshipId.slice(0, 8)}.xlsx`)
+    } catch {
+      notify('Không thể xuất file Excel. Vui lòng thử lại.', 'error')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const selectedScholarship = useMemo(
     () => scholarships?.find((s) => s.id === scholarshipId) ?? null,
     [scholarships, scholarshipId],
@@ -171,9 +195,16 @@ export function CandidatesPage() {
 
   return (
     <PartnerLayout nav={MANAGEMENT_NAV}>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-brand-ink">Quản lý hồ sơ ứng viên</h1>
-        <p className="text-sm text-brand-ink-soft">Xem và xét duyệt hồ sơ ứng viên đã nộp cho từng chương trình học bổng</p>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-brand-ink">Quản lý hồ sơ ứng viên</h1>
+          <p className="text-sm text-brand-ink-soft">Xem và xét duyệt hồ sơ ứng viên đã nộp cho từng chương trình học bổng</p>
+        </div>
+        {scholarshipId && (
+          <Button variant="secondary" icon={<IconDownload className="size-4" />} loading={exporting} onClick={handleExport}>
+            Xuất Excel
+          </Button>
+        )}
       </div>
 
       {scholarships === null ? (
@@ -185,10 +216,10 @@ export function CandidatesPage() {
         />
       ) : (
         <>
-          <div className="mb-4 space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex flex-wrap items-center gap-3">
+          <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <FilterField label="Chương trình học bổng">
               <Select
-                className="w-72"
+                className="h-11 max-w-lg"
                 value={scholarshipId}
                 onChange={(e) => {
                   setPage(1)
@@ -202,92 +233,102 @@ export function CandidatesPage() {
                   </option>
                 ))}
               </Select>
-              <div className="relative min-w-55 flex-1">
-                <IconSearch className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  className="pl-10"
-                  placeholder="Tìm theo tên, trường hoặc email"
-                  value={qInput}
-                  onChange={(e) => setQInput(e.target.value)}
-                />
-              </div>
-            </div>
+            </FilterField>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <Select
-                className="w-52"
-                value={filter}
-                onChange={(e) => {
-                  setPage(1)
-                  setFilter(e.target.value as ApplicationStatus | 'all')
-                }}
-              >
-                {FILTER_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
+            <div className="my-4 border-t border-slate-100" />
+
+            <div className="flex flex-wrap items-end gap-3">
+              <FilterField label="Tìm kiếm" className="min-w-60 flex-1">
+                <div className="relative">
+                  <IconSearch className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    className="h-11 pl-10"
+                    placeholder="Tên, trường hoặc email ứng viên"
+                    value={qInput}
+                    onChange={(e) => setQInput(e.target.value)}
+                  />
+                </div>
+              </FilterField>
+
+              <FilterField label="Trạng thái" className="w-44">
+                <CheckboxFilterDropdown
+                  className="w-full"
+                  label="Tất cả"
+                  options={STATUS_OPTIONS}
+                  selected={statusFilter}
+                  onChange={(next) => {
+                    setPage(1)
+                    setStatusFilter(next)
+                  }}
+                />
+              </FilterField>
 
               {(selectedScholarship?.required_certificates.length ?? 0) > 0 && (
                 <>
-                  <Select
-                    className="w-56"
-                    value={certificateType}
-                    onChange={(e) => {
-                      setPage(1)
-                      setCertificateType(e.target.value)
-                    }}
-                  >
-                    <option value="">Tất cả chứng chỉ</option>
-                    {selectedScholarship!.required_certificates.map((req) => (
-                      <option key={req.id} value={req.certificate_type}>
-                        Đã nộp: {req.certificate_type}
-                      </option>
-                    ))}
-                  </Select>
+                  <FilterField label="Chứng chỉ" className="w-52">
+                    <Select
+                      className="h-11"
+                      value={certificateType}
+                      onChange={(e) => {
+                        setPage(1)
+                        setCertificateType(e.target.value)
+                      }}
+                    >
+                      <option value="">Tất cả chứng chỉ</option>
+                      {selectedScholarship!.required_certificates.map((req) => (
+                        <option key={req.id} value={req.certificate_type}>
+                          {req.certificate_type}
+                        </option>
+                      ))}
+                    </Select>
+                  </FilterField>
                   {certificateType && (
-                    <Input
-                      type="number"
-                      inputMode="decimal"
-                      className="w-36"
-                      placeholder="Điểm tối thiểu"
-                      value={minScoreInput}
-                      onChange={(e) => setMinScoreInput(e.target.value)}
-                    />
+                    <FilterField label="Điểm tối thiểu" className="w-36">
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        className="h-11"
+                        placeholder="VD: 6.5"
+                        value={minScoreInput}
+                        onChange={(e) => setMinScoreInput(e.target.value)}
+                      />
+                    </FilterField>
                   )}
                 </>
               )}
 
-              <Select
-                className="w-60"
-                value={sort}
-                onChange={(e) => {
-                  setPage(1)
-                  setSort(e.target.value as ApplicationSort)
-                }}
-              >
-                {SORT_OPTIONS.filter((o) => !o.requiresCertificate || certificateType).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    Sắp xếp: {o.label}
-                  </option>
-                ))}
-              </Select>
+              <FilterField label="Sắp xếp" className="w-52">
+                <Select
+                  className="h-11"
+                  value={sort}
+                  onChange={(e) => {
+                    setPage(1)
+                    setSort(e.target.value as ApplicationSort)
+                  }}
+                >
+                  {SORT_OPTIONS.filter((o) => !o.requiresCertificate || certificateType).map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+              </FilterField>
 
-              {(filter !== 'all' || certificateType || minScoreInput || sort !== 'created_at_desc' || q) && (
+              {(statusFilter.length > 0 || certificateType || minScoreInput || sort !== 'created_at_desc' || q) && (
                 <button
                   type="button"
                   onClick={() => {
                     setPage(1)
-                    setFilter('all')
+                    setStatusFilter([])
                     setCertificateType('')
                     setMinScoreInput('')
                     setSort('created_at_desc')
                     setQInput('')
                     setQ('')
                   }}
-                  className="shrink-0 text-sm text-brand-blue-600 hover:underline"
+                  className="flex h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-medium text-brand-ink-soft transition-colors hover:bg-slate-50 hover:text-red-500"
                 >
+                  <IconXCircle className="size-4" />
                   Xoá bộ lọc
                 </button>
               )}
@@ -306,66 +347,56 @@ export function CandidatesPage() {
             <StatCard icon={IconXCircle} tone="red" label="Từ chối" value={stats ? String(stats.rejected_applications) : '…'} />
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            {loading ? (
-              <Spinner />
-            ) : items.length === 0 ? (
-              <EmptyState
-                title="Chưa có hồ sơ nào"
-                description="Chưa có ứng viên nào khớp với bộ lọc hiện tại."
-              />
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-brand-blue-50/60 text-brand-ink-soft">
-                    <tr>
-                      <th className="px-5 py-3 font-medium">Mã ứng viên</th>
-                      <th className="px-5 py-3 font-medium">Tên ứng viên</th>
-                      <th className="px-5 py-3 font-medium">Trường</th>
-                      <th className="px-5 py-3 font-medium">Ngành</th>
-                      <th className="px-5 py-3 font-medium">GPA</th>
-                      <th className="px-5 py-3 font-medium">Ngày nộp</th>
-                      <th className="px-5 py-3 font-medium">Trạng thái</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {items.map((it) => (
-                      <tr
-                        key={it.id}
-                        onClick={() => setSelected(it)}
-                        className="cursor-pointer hover:bg-slate-50"
-                      >
-                        <td className="px-5 py-4 font-mono text-xs font-semibold text-slate-600">
-                          {candidateCode(it.candidate.candidate_profile_id)}
-                        </td>
-                        <td className="max-w-[200px] px-5 py-4 font-semibold text-slate-800">
-                          <div className="flex items-center gap-2">
-                            <div className="size-7 shrink-0 overflow-hidden rounded-full bg-slate-200">
-                              {it.candidate.avatar_url && <img src={it.candidate.avatar_url} alt="" className="size-full object-cover" />}
-                            </div>
-                            <span className="truncate">{it.candidate.full_name || it.candidate.email}</span>
-                          </div>
-                        </td>
-                        <td className="max-w-[180px] px-5 py-4 text-slate-600">
-                          <span className="truncate">{it.candidate.current_school ?? '—'}</span>
-                        </td>
-                        <td className="max-w-[160px] px-5 py-4 text-slate-600">
-                          <span className="truncate" title={it.candidate.target_majors.join(', ')}>
-                            {it.candidate.target_majors.length > 0 ? it.candidate.target_majors.join(', ') : '—'}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 font-bold text-slate-800">{it.candidate.gpa ?? '—'}</td>
-                        <td className="px-5 py-4 text-slate-500">{formatDate(it.created_at)}</td>
-                        <td className="px-5 py-4">
-                          <ApplicationStatusBadge status={it.status} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          <Table
+            loading={loading}
+            empty={
+              items.length === 0 ? (
+                <EmptyState title="Chưa có hồ sơ nào" description="Chưa có ứng viên nào khớp với bộ lọc hiện tại." />
+              ) : undefined
+            }
+          >
+            <TableHead>
+              <tr>
+                <TableHeaderCell>Mã ứng viên</TableHeaderCell>
+                <TableHeaderCell>Tên ứng viên</TableHeaderCell>
+                <TableHeaderCell>Trường</TableHeaderCell>
+                <TableHeaderCell>Ngành</TableHeaderCell>
+                <TableHeaderCell>GPA</TableHeaderCell>
+                <TableHeaderCell>Ngày nộp</TableHeaderCell>
+                <TableHeaderCell>Trạng thái</TableHeaderCell>
+              </tr>
+            </TableHead>
+            <TableBody>
+              {items.map((it) => (
+                <TableRow key={it.id} onClick={() => setSelected(it)}>
+                  <TableCell className="font-mono text-xs font-semibold text-slate-600">
+                    {candidateCode(it.candidate.candidate_profile_id)}
+                  </TableCell>
+                  <TableCell className="max-w-[200px] font-semibold text-slate-800">
+                    <div className="flex items-center gap-2">
+                      <div className="size-7 shrink-0 overflow-hidden rounded-full bg-slate-200">
+                        {it.candidate.avatar_url && <img src={it.candidate.avatar_url} alt="" className="size-full object-cover" />}
+                      </div>
+                      <span className="truncate">{it.candidate.full_name || it.candidate.email}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="max-w-[180px]">
+                    <span className="truncate">{it.candidate.current_school ?? '—'}</span>
+                  </TableCell>
+                  <TableCell className="max-w-[160px]">
+                    <span className="truncate" title={it.candidate.target_majors.join(', ')}>
+                      {it.candidate.target_majors.length > 0 ? it.candidate.target_majors.join(', ') : '—'}
+                    </span>
+                  </TableCell>
+                  <TableCell className="font-bold text-slate-800">{it.candidate.gpa ?? '—'}</TableCell>
+                  <TableCell>{formatDate(it.created_at)}</TableCell>
+                  <TableCell>
+                    <ApplicationStatusBadge status={it.status} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
 
           <div className="mt-6">
             <Pagination page={page} pages={pages} onChange={setPage} />
@@ -512,12 +543,12 @@ export function CandidatesPage() {
               </div>
 
               {/* Mục 3: Bảng đối chiếu yêu cầu học bổng */}
-              <div className="p-5 space-y-4 bg-blue-50/20">
-                <div className="flex items-center justify-between border-b border-blue-100 pb-3">
+              <div className="p-5 space-y-4 bg-brand-blue-50/20">
+                <div className="flex items-center justify-between border-b border-brand-blue-100 pb-3">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                     Đối chiếu với yêu cầu học bổng
                   </h3>
-                  <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-bold text-brand-blue-700">
+                  <span className="rounded-full bg-brand-blue-100 px-2.5 py-0.5 text-[11px] font-bold text-brand-blue-700">
                     Tự động đối chiếu
                   </span>
                 </div>
@@ -535,7 +566,7 @@ export function CandidatesPage() {
                       />
                     </div>
 
-                    <div className="space-y-2 pt-2 border-t border-blue-100/80">
+                    <div className="space-y-2 pt-2 border-t border-brand-blue-100/80">
                       <p className="text-xs font-bold text-slate-700">Yêu cầu chứng chỉ học bổng</p>
                       {selectedScholarship.required_certificates.length === 0 ? (
                         <p className="text-xs text-slate-500">Học bổng này không yêu cầu chứng chỉ cụ thể.</p>
@@ -586,6 +617,15 @@ export function CandidatesPage() {
         )}
       </Modal>
     </PartnerLayout>
+  )
+}
+
+function FilterField({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
+  return (
+    <div className={className}>
+      <label className="mb-1.5 block text-xs font-semibold text-brand-ink-soft">{label}</label>
+      {children}
+    </div>
   )
 }
 

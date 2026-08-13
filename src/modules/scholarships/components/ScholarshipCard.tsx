@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Button } from '@/shared/components/ui/Button'
 import { formatCurrencyVnd, formatDate } from '@/shared/lib/format'
-import { MatchBadge } from '@/modules/scholarships/components/badges'
+import { MatchBadge, scholarshipLocationLabel, scholarshipValueLabel } from '@/modules/scholarships/components/badges'
 import type { MatchLabel, Scholarship } from '@/modules/scholarships/types'
 
 export function ScholarshipCard({
@@ -71,16 +71,14 @@ export function ScholarshipCard({
         <div className="flex flex-col gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
           {/* Cùng đồng bộ 1 tone màu xanh thương hiệu nổi bật, viền mảnh rõ ràng */}
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-              {scholarship.value_type}
+            <span className="inline-flex items-center rounded-md border border-brand-blue-200 bg-brand-blue-50 px-2.5 py-1 text-xs font-semibold text-brand-blue-700">
+              {scholarshipValueLabel(scholarship)}
             </span>
-            {scholarship.location_province_city && (
-              <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-                {scholarship.location_province_city}
-              </span>
-            )}
+            <span className="inline-flex items-center rounded-md border border-brand-blue-200 bg-brand-blue-50 px-2.5 py-1 text-xs font-semibold text-brand-blue-700">
+              {scholarshipLocationLabel(scholarship)}
+            </span>
             {scholarship.majors[0] && (
-              <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+              <span className="inline-flex items-center rounded-md border border-brand-blue-200 bg-brand-blue-50 px-2.5 py-1 text-xs font-semibold text-brand-blue-700">
                 {scholarship.majors[0].name}
               </span>
             )}

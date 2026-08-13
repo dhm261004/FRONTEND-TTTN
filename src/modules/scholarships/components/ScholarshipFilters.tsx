@@ -10,6 +10,7 @@ export interface ScholarshipFilterValues {
   degree: string
   location_province_city: string
   value_type: string
+  gpa: string
 }
 
 export const EMPTY_FILTERS: ScholarshipFilterValues = {
@@ -18,11 +19,23 @@ export const EMPTY_FILTERS: ScholarshipFilterValues = {
   degree: '',
   location_province_city: '',
   value_type: '',
+  gpa: '',
 }
 
-function ComingSoonLabel() {
-  return <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">sắp có</span>
-}
+// Cùng bộ giá trị với DEGREE_OPTIONS ở partner/pages/ScholarshipFormPage.tsx — Scholarship.degree lưu
+// đúng code này (không phải nhãn tiếng Việt tự do), so khớp chính xác ở tầng backend.
+const DEGREE_OPTIONS = [
+  { value: 'undergraduate', label: 'Đại học' },
+  { value: 'postgraduate', label: 'Sau đại học' },
+  { value: 'vocational', label: 'Cao đẳng / Nghề' },
+  { value: 'other', label: 'Khác' },
+]
+
+// Cùng bộ giá trị với VALUE_TYPE_OPTIONS ở partner/pages/ScholarshipFormPage.tsx.
+const VALUE_TYPE_OPTIONS = [
+  { value: 'percentage', label: 'Theo phần trăm học phí (%)' },
+  { value: 'fixed_amount', label: 'Số tiền cố định' },
+]
 
 export function ScholarshipFilters({
   values,
@@ -71,11 +84,14 @@ export function ScholarshipFilters({
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-brand-ink-soft">Bậc học</label>
-            <Input
-              placeholder="VD: Đại học, Cao học..."
-              value={values.degree}
-              onChange={(e) => set('degree', e.target.value)}
-            />
+            <Select value={values.degree} onChange={(e) => set('degree', e.target.value)}>
+              <option value="">Tất cả bậc học</option>
+              {DEGREE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-brand-ink-soft">Khu vực</label>
@@ -89,64 +105,29 @@ export function ScholarshipFilters({
             </Select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-brand-ink-soft">
-              Hạn nộp
-              <ComingSoonLabel />
-            </label>
-            <Select disabled>
-              <option>Bất kỳ</option>
-            </Select>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-brand-ink-soft">Bộ lọc nâng cao</h2>
-        <div className="space-y-3">
-          <div>
             <label className="mb-1 block text-xs font-medium text-brand-ink-soft">Loại học bổng</label>
+            <Select value={values.value_type} onChange={(e) => set('value_type', e.target.value)}>
+              <option value="">Tất cả loại</option>
+              {VALUE_TYPE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-brand-ink-soft">GPA của bạn</label>
             <Input
-              placeholder="VD: 100% Tuition..."
-              value={values.value_type}
-              onChange={(e) => set('value_type', e.target.value)}
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={4}
+              step={0.01}
+              placeholder="VD: 3.2"
+              value={values.gpa}
+              onChange={(e) => set('gpa', e.target.value)}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-brand-ink-soft">
-              Số tiền tối thiểu
-              <ComingSoonLabel />
-            </label>
-            <Input disabled placeholder="Không giới hạn" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-brand-ink-soft">
-              Yêu cầu ngôn ngữ
-              <ComingSoonLabel />
-            </label>
-            <Select disabled>
-              <option>Không yêu cầu</option>
-            </Select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-brand-ink-soft">
-              Tình trạng cư trú
-              <ComingSoonLabel />
-            </label>
-            <Select disabled>
-              <option>Không áp dụng</option>
-            </Select>
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <label className="mb-1 flex items-center text-xs font-medium text-brand-ink-soft">
-            GPA tối thiểu
-            <ComingSoonLabel />
-          </label>
-          <input type="range" disabled min={0} max={4} step={0.1} defaultValue={3} className="w-full accent-slate-300" />
-          <div className="flex justify-between text-[10px] text-slate-400">
-            <span>0.0</span>
-            <span>4.0</span>
+            <p className="mt-1 text-[11px] text-brand-ink-soft">Chỉ hiện học bổng bạn đủ điều kiện GPA để nộp.</p>
           </div>
         </div>
       </div>

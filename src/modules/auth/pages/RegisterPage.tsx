@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { AuthLayout } from '@/modules/auth/components/AuthLayout'
+import { GoogleLoginButton } from '@/modules/auth/components/GoogleLoginButton'
 import { authApi } from '@/modules/auth/api'
 import { Field } from '@/shared/components/ui/Field'
 import { Input } from '@/shared/components/ui/Input'
@@ -79,6 +80,15 @@ export function RegisterPage() {
           Đăng ký
         </Button>
       </form>
+
+      <div className="my-6 flex items-center gap-3">
+        <div className="h-px flex-1 bg-slate-200" />
+        <span className="text-xs font-medium text-brand-ink-soft">Hoặc</span>
+        <div className="h-px flex-1 bg-slate-200" />
+      </div>
+
+      <GoogleLoginButton />
+      <p className="mt-2 text-center text-xs text-brand-ink-soft">Đăng ký bằng Google sẽ tạo tài khoản Sinh viên.</p>
 
       <p className="mt-6 text-center text-sm text-brand-ink-soft">
         Bạn đã có tài khoản?{' '}

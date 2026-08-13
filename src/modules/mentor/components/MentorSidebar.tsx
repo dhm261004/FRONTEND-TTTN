@@ -11,7 +11,7 @@ export function MentorSidebar() {
   const { user } = useAuth()
   const { notify } = useToast()
 
-  const displayName = profile?.job_title || user?.email || 'Mentor'
+  const displayName = profile?.full_name || profile?.job_title || user?.email || 'Mentor'
   const shortId = profile ? profile.id.slice(0, 8).toUpperCase() : null
 
   return (

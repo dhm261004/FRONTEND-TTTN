@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -7,32 +7,61 @@ import { useCandidateProfile } from '@/modules/candidate/CandidateProfileContext
 import { candidateProfileApi } from '@/modules/candidate/api/candidateProfile.api'
 import { majorsApi } from '@/modules/scholarships/api/majors.api'
 import { provincesApi, type Province, type Ward } from '@/shared/api/provinces.api'
+import { useAuth } from '@/modules/auth/AuthContext'
 import { Field } from '@/shared/components/ui/Field'
 import { Input } from '@/shared/components/ui/Input'
 import { Select } from '@/shared/components/ui/Select'
-import { Textarea } from '@/shared/components/ui/Textarea'
-import { Checkbox } from '@/shared/components/ui/Checkbox'
 import { Button } from '@/shared/components/ui/Button'
 import { AvatarUpload } from '@/shared/components/ui/AvatarUpload'
 import { Spinner } from '@/shared/components/ui/Spinner'
+import { Modal } from '@/shared/components/ui/Modal'
 import { useToast } from '@/shared/components/ui/ToastProvider'
 import { ApiError } from '@/shared/api/types'
+import { dateInputToIso, toDateInputValue } from '@/shared/lib/format'
+import { IconAward, IconPlusCircle, IconX } from '@/modules/candidate/components/icons'
 import type { Major } from '@/modules/scholarships/types'
-import type { CandidateCertificate } from '@/modules/candidate/types'
+import type { CandidateActivity, CandidateAward, CandidateCertificate } from '@/modules/candidate/types'
+import type { UserRole } from '@/modules/auth/types'
 
 const schema = z.object({
+  full_name: z.string().trim().min(1, 'Vui lòng nhập họ tên').max(255),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^[0-9+\-\s()]+$/, 'Số điện thoại không hợp lệ')
+    .min(8, 'Số điện thoại quá ngắn')
+    .max(20)
+    .or(z.literal(''))
+    .optional(),
+  date_of_birth: z.string().optional(),
   current_school: z.string().trim().optional(),
+  current_degree_level: z.string().trim().optional(),
   gpa: z.string().trim().optional(),
   financial_need_level: z.string().trim().optional(),
-  is_first_generation: z.boolean().optional(),
-  extracurriculars: z.string().trim().optional(),
-  awards: z.string().trim().optional(),
 })
 
 type FormValues = z.infer<typeof schema>
 
+const ROLE_LABELS: Record<UserRole, string> = {
+  candidate: 'Sinh viên',
+  partner: 'Nhà tài trợ',
+  mentor: 'Mentor',
+  admin: 'Quản trị viên',
+}
+
+// Cùng bộ giá trị với DEGREE_OPTIONS ở partner/pages/ScholarshipFormPage.tsx — Scholarship.degree
+// dùng đúng các code này, và RecommendationService so khớp currentDegreeLevel với scholarship.degree
+// bằng so sánh chuỗi (không phải suy luận ngữ nghĩa), nên phải cùng bộ giá trị mới khớp được.
+const DEGREE_OPTIONS = [
+  { value: 'undergraduate', label: 'Đại học' },
+  { value: 'postgraduate', label: 'Sau đại học' },
+  { value: 'vocational', label: 'Cao đẳng / Nghề' },
+  { value: 'other', label: 'Khác' },
+]
+
 export function ProfilePage() {
   const { profile, loading, setProfile } = useCandidateProfile()
+  const { user } = useAuth()
   const { notify } = useToast()
   const [majors, setMajors] = useState<Major[]>([])
   const [targetMajors, setTargetMajors] = useState<string[]>([])
@@ -47,20 +76,29 @@ export function ProfilePage() {
   const [certForm, setCertForm] = useState({ certificate_type: '', certificate_score: '' })
   const [savingCert, setSavingCert] = useState(false)
 
+  const [activities, setActivities] = useState<CandidateActivity[]>([])
+  const [awards, setAwards] = useState<CandidateAward[]>([])
+  const [activityModalOpen, setActivityModalOpen] = useState(false)
+  const [awardModalOpen, setAwardModalOpen] = useState(false)
+
+  const cvInputRef = useRef<HTMLInputElement>(null)
+  const [uploadingCv, setUploadingCv] = useState(false)
+
   const {
     register,
     handleSubmit,
-    formState: { isSubmitting },
+    formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     values: profile
       ? {
+          full_name: profile.full_name ?? '',
+          phone: profile.phone ?? '',
+          date_of_birth: toDateInputValue(profile.date_of_birth),
           current_school: profile.current_school ?? '',
+          current_degree_level: profile.current_degree_level ?? '',
           gpa: profile.gpa != null ? String(profile.gpa) : '',
           financial_need_level: profile.financial_need_level ?? '',
-          is_first_generation: profile.is_first_generation,
-          extracurriculars: profile.extracurriculars ?? '',
-          awards: profile.awards ?? '',
         }
       : undefined,
   })
@@ -68,6 +106,8 @@ export function ProfilePage() {
   useEffect(() => {
     void majorsApi.list().then(setMajors)
     void candidateProfileApi.listCertificates().then(setCertificates)
+    void candidateProfileApi.listActivities().then(setActivities)
+    void candidateProfileApi.listAwards().then(setAwards)
     void provincesApi.listProvinces().then(setProvinces)
   }, [])
 
@@ -96,14 +136,15 @@ export function ProfilePage() {
     setServerError(null)
     try {
       const updated = await candidateProfileApi.updateMe({
+        full_name: values.full_name,
+        phone: values.phone || null,
+        date_of_birth: values.date_of_birth ? dateInputToIso(values.date_of_birth) : null,
         province_city: provinceCity || null,
         ward: ward || null,
         current_school: values.current_school || null,
+        current_degree_level: values.current_degree_level || null,
         gpa: values.gpa ? Number(values.gpa) : null,
         financial_need_level: values.financial_need_level || null,
-        is_first_generation: values.is_first_generation,
-        extracurriculars: values.extracurriculars || null,
-        awards: values.awards || null,
         target_majors: targetMajors,
       })
       setProfile(updated)
@@ -124,6 +165,22 @@ export function ProfilePage() {
       notify('Đã cập nhật ảnh đại diện.')
     } catch (err) {
       notify(err instanceof ApiError ? err.message : 'Không thể tải lên ảnh đại diện.', 'error')
+    }
+  }
+
+  const handleCvFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingCv(true)
+    try {
+      const updated = await candidateProfileApi.uploadCv(file)
+      setProfile(updated)
+      notify('Đã tải lên và phân tích CV bằng AI.')
+    } catch (err) {
+      notify(err instanceof ApiError ? err.message : 'Không thể tải lên CV. Đảm bảo file là PDF có nội dung chữ.', 'error')
+    } finally {
+      setUploadingCv(false)
+      e.target.value = ''
     }
   }
 
@@ -160,6 +217,24 @@ export function ProfilePage() {
     }
   }
 
+  const handleDeleteActivity = async (id: string) => {
+    try {
+      await candidateProfileApi.deleteActivity(id)
+      setActivities((prev) => prev.filter((a) => a.id !== id))
+    } catch (err) {
+      notify(err instanceof ApiError ? err.message : 'Không thể xoá hoạt động.', 'error')
+    }
+  }
+
+  const handleDeleteAward = async (id: string) => {
+    try {
+      await candidateProfileApi.deleteAward(id)
+      setAwards((prev) => prev.filter((a) => a.id !== id))
+    } catch (err) {
+      notify(err instanceof ApiError ? err.message : 'Không thể xoá giải thưởng.', 'error')
+    }
+  }
+
   if (loading) {
     return (
       <CandidateLayout>
@@ -185,10 +260,35 @@ export function ProfilePage() {
           </div>
 
           <div>
+            <h2 className="mb-3 font-bold text-brand-ink">Thông tin tài khoản</h2>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <Field label="Họ và tên" required error={errors.full_name?.message} className="sm:col-span-2">
+                <Input placeholder="Nhập họ và tên" {...register('full_name')} error={Boolean(errors.full_name)} />
+              </Field>
+              <Field label="Số điện thoại" error={errors.phone?.message}>
+                <Input type="tel" placeholder="Nhập số điện thoại" {...register('phone')} error={Boolean(errors.phone)} />
+              </Field>
+              <Field label="Ngày sinh" error={errors.date_of_birth?.message}>
+                <Input type="date" {...register('date_of_birth')} error={Boolean(errors.date_of_birth)} />
+              </Field>
+            </div>
+          </div>
+
+          <div>
             <h2 className="mb-3 font-bold text-brand-ink">Học vấn</h2>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Field label="Trường đang theo học">
                 <Input placeholder="VD: Đại học Bách Khoa Hà Nội" {...register('current_school')} />
+              </Field>
+              <Field label="Bậc học hiện tại" hint="Dùng để so khớp với bậc học của học bổng khi tính độ phù hợp.">
+                <Select {...register('current_degree_level')}>
+                  <option value="">-- Chọn bậc học --</option>
+                  {DEGREE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
               </Field>
               <Field label="GPA (thang 4.0)">
                 <Input type="number" step="0.01" min={0} max={4} placeholder="VD: 3.2" {...register('gpa')} />
@@ -245,24 +345,9 @@ export function ProfilePage() {
                 </Select>
               </Field>
             </div>
-            <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <Field label="Hoàn cảnh tài chính" hint="Tự mô tả, VD: Khó khăn, Trung bình...">
+            <div className="mt-4">
+              <Field label="Hoàn cảnh tài chính" hint="Tự mô tả, VD: Khó khăn, Trung bình..." className="sm:max-w-xs">
                 <Input placeholder="VD: Khó khăn" {...register('financial_need_level')} />
-              </Field>
-              <div className="flex items-end">
-                <Checkbox label="Là thế hệ đầu tiên trong gia đình học đại học" {...register('is_first_generation')} />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h2 className="mb-3 font-bold text-brand-ink">Hoạt động & thành tích</h2>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <Field label="Hoạt động ngoại khoá">
-                <Textarea rows={3} {...register('extracurriculars')} />
-              </Field>
-              <Field label="Giải thưởng, thành tích">
-                <Textarea rows={3} {...register('awards')} />
               </Field>
             </div>
           </div>
@@ -301,8 +386,194 @@ export function ProfilePage() {
             </Button>
           </div>
         </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="font-bold text-brand-ink">Hoạt động ngoại khoá</h2>
+            <Button size="sm" variant="ghost" icon={<IconPlusCircle className="size-4" />} onClick={() => setActivityModalOpen(true)}>
+              Thêm
+            </Button>
+          </div>
+          {activities.length === 0 ? (
+            <p className="text-sm text-brand-ink-soft">Chưa có hoạt động nào.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {activities.map((a) => (
+                <KeyValueCard key={a.id} item={a} onDelete={handleDeleteActivity} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="font-bold text-brand-ink">Giải thưởng, thành tích</h2>
+            <Button size="sm" variant="ghost" icon={<IconPlusCircle className="size-4" />} onClick={() => setAwardModalOpen(true)}>
+              Thêm
+            </Button>
+          </div>
+          {awards.length === 0 ? (
+            <p className="text-sm text-brand-ink-soft">Chưa có giải thưởng nào.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {awards.map((a) => (
+                <KeyValueCard key={a.id} item={a} onDelete={handleDeleteAward} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <h2 className="mb-3 font-bold text-brand-ink">CV & Phân tích AI</h2>
+          <p className="mb-4 text-xs text-brand-ink-soft">
+            Tải CV (chỉ nhận PDF) để hệ thống phân tích và tính độ phù hợp học bổng chính xác hơn (Phù hợp lĩnh vực, Hoạt động xã hội,
+            Khớp ưu tiên học bổng). Có thể mất vài giây để xử lý.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <input ref={cvInputRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => void handleCvFileChange(e)} />
+            <Button type="button" size="sm" loading={uploadingCv} onClick={() => cvInputRef.current?.click()}>
+              {profile?.cv_url ? 'Tải CV mới' : 'Tải CV lên'}
+            </Button>
+            {profile?.cv_url && (
+              <a href={profile.cv_url} target="_blank" rel="noreferrer" className="text-xs text-brand-blue-600 hover:underline">
+                Xem CV hiện tại
+              </a>
+            )}
+          </div>
+          {profile?.cv_url && (
+            <p className="mt-4 text-xs text-brand-ink-soft">
+              Đã tiếp nhận CV{profile.cv_analyzed_at && ` lúc ${new Date(profile.cv_analyzed_at).toLocaleString('vi-VN')}`}. Xem điểm phù
+              hợp chi tiết khi vào từng học bổng cụ thể.
+            </p>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <h2 className="mb-4 font-bold text-brand-ink">Thông tin đăng nhập</h2>
+          <dl className="space-y-4">
+            <div>
+              <dt className="text-xs text-brand-ink-soft">Email đăng nhập</dt>
+              <dd className="mt-0.5 font-medium text-brand-ink">{user?.email}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-brand-ink-soft">Vai trò</dt>
+              <dd className="mt-0.5 font-medium text-brand-ink">
+                {user ? user.roles.map((role) => ROLE_LABELS[role]).join(', ') : '—'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-brand-ink-soft">Trạng thái email</dt>
+              <dd className="mt-0.5 font-medium text-brand-ink">{user?.is_email_verified ? 'Đã xác thực' : 'Chưa xác thực'}</dd>
+            </div>
+          </dl>
+          <p className="mt-4 text-xs text-brand-ink-soft">
+            Đổi email đăng nhập chưa được hệ thống hỗ trợ. Xem mục "Mật khẩu và bảo mật" để đổi mật khẩu.
+          </p>
+        </div>
       </div>
+
+      <AddKeyValueModal
+        open={activityModalOpen}
+        onClose={() => setActivityModalOpen(false)}
+        title="Thêm hoạt động ngoại khoá"
+        titlePlaceholder="VD: Chủ nhiệm CLB Lập trình"
+        submitLabel="Thêm hoạt động"
+        onSubmit={(input) => candidateProfileApi.createActivity(input)}
+        onCreated={(item) => setActivities((prev) => [item, ...prev])}
+      />
+      <AddKeyValueModal
+        open={awardModalOpen}
+        onClose={() => setAwardModalOpen(false)}
+        title="Thêm giải thưởng, thành tích"
+        titlePlaceholder="VD: Giải Nhì Olympic Tin học"
+        submitLabel="Thêm giải thưởng"
+        onSubmit={(input) => candidateProfileApi.createAward(input)}
+        onCreated={(item) => setAwards((prev) => [item, ...prev])}
+      />
     </CandidateLayout>
+  )
+}
+
+function KeyValueCard({
+  item,
+  onDelete,
+}: {
+  item: CandidateActivity | CandidateAward
+  onDelete: (id: string) => void
+}) {
+  return (
+    <div className="group flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+      <IconAward className="mt-0.5 size-5 shrink-0 text-brand-yellow-500" />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-brand-ink">{item.title}</p>
+        {item.description && <p className="text-xs text-brand-ink-soft">{item.description}</p>}
+      </div>
+      <button
+        type="button"
+        onClick={() => onDelete(item.id)}
+        aria-label="Xoá"
+        className="shrink-0 rounded-full p-1 text-slate-400 opacity-0 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+      >
+        <IconX className="size-4" />
+      </button>
+    </div>
+  )
+}
+
+function AddKeyValueModal({
+  open,
+  onClose,
+  title,
+  titlePlaceholder,
+  submitLabel,
+  onSubmit,
+  onCreated,
+}: {
+  open: boolean
+  onClose: () => void
+  title: string
+  titlePlaceholder: string
+  submitLabel: string
+  onSubmit: (input: { title: string; description?: string }) => Promise<CandidateActivity | CandidateAward>
+  onCreated: (item: CandidateActivity | CandidateAward) => void
+}) {
+  const { notify } = useToast()
+  const [form, setForm] = useState({ title: '', description: '' })
+  const [saving, setSaving] = useState(false)
+
+  const handleSubmit = async () => {
+    if (!form.title.trim()) return
+    setSaving(true)
+    try {
+      const created = await onSubmit({ title: form.title, description: form.description || undefined })
+      onCreated(created)
+      setForm({ title: '', description: '' })
+      onClose()
+    } catch (err) {
+      notify(err instanceof ApiError ? err.message : 'Không thể thêm mục này.', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title={title}>
+      <div className="flex flex-col gap-5">
+        <Field label="Tiêu đề">
+          <Input placeholder={titlePlaceholder} value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+        </Field>
+        <Field label="Chú thích">
+          <Input
+            placeholder="VD: Cấp quốc gia, năm 2023"
+            value={form.description}
+            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+          />
+        </Field>
+        <Button loading={saving} onClick={() => void handleSubmit()}>
+          {submitLabel}
+        </Button>
+      </div>
+    </Modal>
   )
 }
 

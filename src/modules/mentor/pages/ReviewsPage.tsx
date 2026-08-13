@@ -81,6 +81,11 @@ export function ReviewsPage() {
                 </div>
                 <StarRating rating={review.rating} />
               </div>
+              {review.service_name && (
+                <span className="mt-2 inline-flex items-center rounded-full bg-brand-blue-50 px-2.5 py-1 text-xs font-medium text-brand-blue-700">
+                  Gói: {review.service_name}
+                </span>
+              )}
               {review.comment && <p className="mt-3 text-sm text-brand-ink">{review.comment}</p>}
             </div>
           ))}

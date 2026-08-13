@@ -15,7 +15,7 @@ export function StatusText({ tone, children }: { tone: Tone; children: ReactNode
   return <span className={cn('font-medium', toneClasses[tone])}>{children}</span>
 }
 
-export function Badge({ tone = 'slate', children }: { tone?: Tone; children: ReactNode }) {
+export function Badge({ tone = 'slate', children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
   const bg: Record<Tone, string> = {
     green: 'bg-emerald-50 text-emerald-600',
     red: 'bg-red-50 text-red-500',
@@ -24,7 +24,7 @@ export function Badge({ tone = 'slate', children }: { tone?: Tone; children: Rea
     blue: 'bg-brand-blue-50 text-brand-blue-600',
   }
   return (
-    <span className={cn('inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-medium', bg[tone])}>
+    <span className={cn('inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-medium', bg[tone], className)}>
       {children}
     </span>
   )

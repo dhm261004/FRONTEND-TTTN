@@ -20,7 +20,7 @@ export interface Scholarship {
   funding_percentage: number | null
   is_no_essay: boolean
   min_gpa: number | null
-  location_province_city: string | null
+  location_province_cities: string[]
   start_date: string | null
   deadline: string
   is_active: boolean
@@ -39,6 +39,7 @@ export interface ScholarshipListParams {
   location_province_city?: string
   major_id?: number
   partner_profile_id?: string
+  gpa?: number
   page?: number
   limit?: number
 }
@@ -94,6 +95,7 @@ export interface MatchCriterion {
   criterion: string
   score: number
   max_score: number
+  applicable: boolean
   reason: string
 }
 

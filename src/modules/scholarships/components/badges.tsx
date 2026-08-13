@@ -1,6 +1,25 @@
 import { Badge, StatusText } from '@/shared/components/ui/Badge'
 import type { ApplicationStatus, InteractionType, MatchLabel, Scholarship } from '@/modules/scholarships/types'
 
+// value_type lưu ở backend là code ('percentage'/'fixed_amount'), không phải nhãn hiển thị được — hiện
+// thẳng code này ra tag sẽ rất xấu. Với percentage, ưu tiên hiện đúng % nếu partner đã điền funding_percentage.
+export function scholarshipValueLabel(scholarship: Pick<Scholarship, 'value_type' | 'funding_percentage'>): string {
+  if (scholarship.value_type === 'percentage') {
+    return scholarship.funding_percentage != null ? `${scholarship.funding_percentage}% học phí` : 'Theo % học phí'
+  }
+  if (scholarship.value_type === 'fixed_amount') return 'Số tiền cố định'
+  return scholarship.value_type
+}
+
+// location_province_cities rỗng = "Toàn quốc" (xem CLAUDE.md 2026-08-11). Hiện tỉnh đầu tiên kèm
+// "+N" khi partner chọn nhiều khu vực, để không tràn dòng ở các chỗ hiển thị dạng tag/chip 1 dòng.
+export function scholarshipLocationLabel(scholarship: Pick<Scholarship, 'location_province_cities'>): string {
+  const cities = scholarship.location_province_cities
+  if (cities.length === 0) return 'Toàn quốc'
+  if (cities.length === 1) return cities[0]
+  return `${cities[0]} +${cities.length - 1}`
+}
+
 export function getScholarshipStatus(scholarship: Pick<Scholarship, 'is_active' | 'deadline'>) {
   const isExpired = new Date(scholarship.deadline).getTime() < Date.now()
   if (!scholarship.is_active) return { label: 'Đã đóng đơn', tone: 'slate' as const }
@@ -43,7 +62,7 @@ export function ApplicationStatusBadge({ status }: { status: ApplicationStatus }
   return <Badge tone={APPLICATION_TONES[status]}>{APPLICATION_LABELS[status]}</Badge>
 }
 
-const MATCH_LABELS: Record<MatchLabel, string> = {
+export const MATCH_LABELS: Record<MatchLabel, string> = {
   very_good_fit: 'Rất phù hợp',
   good_fit: 'Phù hợp',
   partial_fit: 'Phù hợp một phần',
@@ -56,4 +75,14 @@ export function MatchBadge({ score, label }: { score: number; label: MatchLabel 
       Độ phù hợp: {score}% · {MATCH_LABELS[label]}
     </span>
   )
+}
+
+// Chấm điểm AI (embedding + LLM judge) trên 4 tiêu chí — xem GET /scholarships/:id/match.
+// `criterion` từ API là string tự do (không phải union), nên map này chỉ dùng ?? b.criterion làm fallback
+// để không vỡ UI nếu backend thêm tiêu chí mới sau này.
+export const CRITERION_LABELS: Record<string, string> = {
+  eligibility: 'Điều kiện đủ (GPA, ngoại ngữ, bằng cấp)',
+  domain_relevance: 'Phù hợp lĩnh vực (CV vs học bổng)',
+  impact_leadership: 'Hoạt động xã hội',
+  priority_fit: 'Khớp ưu tiên học bổng',
 }

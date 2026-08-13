@@ -7,6 +7,7 @@ interface AuthContextValue {
   user: UserPublic | null
   isAuthenticated: boolean
   login: (payload: LoginPayload) => Promise<UserPublic>
+  loginWithGoogle: (idToken: string) => Promise<UserPublic>
   logout: () => Promise<void>
 }
 
@@ -22,14 +23,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return tokens.user
   }, [])
 
+  const loginWithGoogle = useCallback(async (idToken: string) => {
+    const tokens = await authApi.loginWithGoogle(idToken)
+    tokenStorage.setSession(tokens.access_token, tokens.refresh_token, tokens.user)
+    setUser(tokens.user)
+    return tokens.user
+  }, [])
+
   const logout = useCallback(async () => {
     await authApi.logout()
     setUser(null)
   }, [])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isAuthenticated: Boolean(user), login, logout }),
-    [user, login, logout],
+    () => ({ user, isAuthenticated: Boolean(user), login, loginWithGoogle, logout }),
+    [user, login, loginWithGoogle, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

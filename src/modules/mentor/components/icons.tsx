@@ -90,3 +90,73 @@ export const IconPlusCircle = (p: SVGProps<SVGSVGElement>) => (
     <path d="M12 8v8M8 12h8" strokeLinecap="round" />
   </Icon>
 )
+
+export const IconGraduationCap = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="m12 4 9 4.5-9 4.5-9-4.5Z" strokeLinejoin="round" />
+    <path d="M6.5 11v4.5c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5V11" strokeLinecap="round" />
+  </Icon>
+)
+
+export const IconAward = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <circle cx="12" cy="9" r="5.5" />
+    <path d="m8.5 13.5-1.5 6 5-2.5 5 2.5-1.5-6" strokeLinecap="round" strokeLinejoin="round" />
+  </Icon>
+)
+
+export const IconSearch = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="m21 21-4.3-4.3" strokeLinecap="round" />
+  </Icon>
+)
+
+export const IconPencil = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="m4 20 1-4.5L15.5 5l3.5 3.5L8.5 19 4 20Z" strokeLinejoin="round" />
+    <path d="m13.5 6.5 4 4" strokeLinecap="round" />
+  </Icon>
+)
+
+export const IconX = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="m6 6 12 12M18 6 6 18" strokeLinecap="round" />
+  </Icon>
+)
+
+export const IconArrowRight = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M4 12h16M13 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+  </Icon>
+)
+
+export const IconSparkle = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path
+      d="M12 3.5c.5 3 2 4.5 5 5-3 .5-4.5 2-5 5-.5-3-2-4.5-5-5 3-.5 4.5-2 5-5Z"
+      strokeLinejoin="round"
+      strokeLinecap="round"
+    />
+    <path d="M19 15.5c.3 1.4 1 2.1 2.4 2.4-1.4.3-2.1 1-2.4 2.4-.3-1.4-1-2.1-2.4-2.4 1.4-.3 2.1-1 2.4-2.4Z" strokeLinejoin="round" />
+  </Icon>
+)
+
+export const IconQuote = (p: SVGProps<SVGSVGElement>) => (
+  <Icon fill="currentColor" stroke="none" {...p}>
+    <path d="M9.5 6C6.5 6 4 8.7 4 12.3 4 15.4 6.1 18 9 18h.3c-.4 1.7-1.6 3-3.3 3.3v2.2c3.4-.4 6-3.3 6-7.3V12c0-3.3-1.1-6-2.5-6ZM19 6c-3 0-5.5 2.7-5.5 6.3 0 3.1 2.1 5.7 5 5.7h.3c-.4 1.7-1.6 3-3.3 3.3v2.2c3.4-.4 6-3.3 6-7.3V12c0-3.3-1.1-6-2.5-6Z" />
+  </Icon>
+)
+
+export const IconMapPin = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M12 21s7-6.5 7-11.5a7 7 0 1 0-14 0C5 14.5 12 21 12 21Z" strokeLinejoin="round" />
+    <circle cx="12" cy="9.5" r="2.5" />
+  </Icon>
+)
+
+export const IconMessageCircle = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M4 12a8 8 0 1 1 3.2 6.4L4 20l1.4-3.6A7.96 7.96 0 0 1 4 12Z" strokeLinejoin="round" strokeLinecap="round" />
+  </Icon>
+)

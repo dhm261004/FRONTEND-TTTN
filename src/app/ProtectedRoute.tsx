@@ -12,11 +12,11 @@ export function ProtectedRoute({ children, roles }: { children: ReactNode; roles
     return <Navigate to="/dang-nhap" replace state={{ from: location.pathname }} />
   }
 
-  if (roles && user && !roles.includes(user.role)) {
+  if (roles && user && !roles.some((role) => user.roles.includes(role))) {
     return (
       <div className="flex min-h-svh flex-col items-center justify-center gap-3 bg-app-bg px-4 text-center">
         <p className="text-lg font-semibold text-brand-ink">Tài khoản này không có quyền truy cập trang này.</p>
-        <p className="text-sm text-brand-ink-soft">Vai trò hiện tại: {user.role}</p>
+        <p className="text-sm text-brand-ink-soft">Vai trò hiện tại: {user.roles.join(', ')}</p>
         <Button variant="secondary" onClick={() => void logout()}>
           Đăng xuất
         </Button>

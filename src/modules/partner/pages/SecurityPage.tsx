@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { PartnerLayout } from '@/modules/partner/components/PartnerLayout'
-import { ACCOUNT_NAV } from '@/modules/partner/components/nav'
+import { MANAGEMENT_NAV } from '@/modules/partner/components/nav'
 import { Field } from '@/shared/components/ui/Field'
 import { Input } from '@/shared/components/ui/Input'
 import { Button } from '@/shared/components/ui/Button'
@@ -73,7 +73,7 @@ export function SecurityPage() {
   }
 
   return (
-    <PartnerLayout nav={ACCOUNT_NAV}>
+    <PartnerLayout nav={MANAGEMENT_NAV}>
       <div className="mx-auto max-w-2xl space-y-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
           <h1 className="text-lg font-bold text-brand-ink">Mật khẩu và bảo mật</h1>

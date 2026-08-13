@@ -6,10 +6,12 @@ import { mentorSessionsApi } from '@/modules/mentor/api/mentorSessions.api'
 import { StatCard } from '@/modules/mentor/components/StatCard'
 import { SessionStatusBadge } from '@/modules/mentor/components/SessionStatusBadge'
 import { Select } from '@/shared/components/ui/Select'
+import { Input } from '@/shared/components/ui/Input'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Modal } from '@/shared/components/ui/Modal'
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '@/shared/components/ui/Table'
 import { formatCurrencyVnd, formatDate } from '@/shared/lib/format'
 import { IconBriefcase, IconCheckCircle, IconWallet } from '@/modules/mentor/components/icons'
 import type { MentoringSession, MentorServicePurchaseWithCandidate } from '@/modules/mentor/types'
@@ -24,6 +26,7 @@ function formatTimeRange(startIso: string, endIso: string) {
 export function IncomePage() {
   const { profile } = useMentorProfile()
   const [serviceFilter, setServiceFilter] = useState('')
+  const [studentQuery, setStudentQuery] = useState('')
   const [purchases, setPurchases] = useState<MentorServicePurchaseWithCandidate[] | null>(null)
   const [total, setTotal] = useState(0)
   const [sessions, setSessions] = useState<MentoringSession[]>([])
@@ -43,14 +46,23 @@ export function IncomePage() {
       })
   }, [serviceFilter])
 
-  const stats = useMemo(() => {
+  const filteredPurchases = useMemo(() => {
     const items = purchases ?? []
+    const q = studentQuery.trim().toLowerCase()
+    if (!q) return items
+    return items.filter(
+      (p) => (p.candidate.full_name ?? '').toLowerCase().includes(q) || p.candidate.email.toLowerCase().includes(q),
+    )
+  }, [purchases, studentQuery])
+
+  const stats = useMemo(() => {
+    const items = filteredPurchases
     return {
       revenue: items.reduce((sum, p) => sum + p.price, 0),
       studentsCount: new Set(items.map((p) => p.candidate.candidate_profile_id)).size,
       sessionsSold: items.reduce((sum, p) => sum + p.total_sessions, 0),
     }
-  }, [purchases])
+  }, [filteredPurchases])
 
   const sessionsForSelected = selectedPurchase
     ? sessions
@@ -62,14 +74,22 @@ export function IncomePage() {
     <MentorLayout>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-brand-ink">Quản lý thu nhập</h1>
-        <Select className="w-64" value={serviceFilter} onChange={(e) => setServiceFilter(e.target.value)}>
-          <option value="">Tất cả gói dịch vụ</option>
-          {(profile?.services ?? []).map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            className="h-10 w-56"
+            placeholder="Tìm học viên theo tên, email..."
+            value={studentQuery}
+            onChange={(e) => setStudentQuery(e.target.value)}
+          />
+          <Select className="w-64" value={serviceFilter} onChange={(e) => setServiceFilter(e.target.value)}>
+            <option value="">Tất cả gói dịch vụ</option>
+            {(profile?.services ?? []).map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </Select>
+        </div>
       </div>
 
       {purchases === null ? (
@@ -92,40 +112,36 @@ export function IncomePage() {
             </div>
             {purchases.length === 0 ? (
               <EmptyState title="Chưa có giao dịch nào" description="Khi học viên mua gói dịch vụ của bạn, giao dịch sẽ hiện ở đây." />
+            ) : filteredPurchases.length === 0 ? (
+              <EmptyState title="Không tìm thấy giao dịch" description="Không có giao dịch nào khớp với từ khoá tìm kiếm." />
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-left text-xs text-brand-ink-soft">
-                      <th className="px-6 py-3 font-medium">Học viên</th>
-                      <th className="px-6 py-3 font-medium">Gói dịch vụ</th>
-                      <th className="px-6 py-3 font-medium">Giá</th>
-                      <th className="px-6 py-3 font-medium">Buổi còn lại</th>
-                      <th className="px-6 py-3 font-medium">Ngày mua</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {purchases.map((p) => (
-                      <tr
-                        key={p.id}
-                        onClick={() => setSelectedPurchase(p)}
-                        className="cursor-pointer border-b border-slate-50 last:border-0 hover:bg-brand-blue-50/50"
-                      >
-                        <td className="px-6 py-3">
-                          <p className="font-medium text-brand-ink">{p.candidate.full_name || p.candidate.email}</p>
-                          <p className="text-xs text-brand-ink-soft">{p.candidate.email}</p>
-                        </td>
-                        <td className="px-6 py-3 text-brand-ink">{p.service_name}</td>
-                        <td className="px-6 py-3 text-brand-ink">{formatCurrencyVnd(p.price)}</td>
-                        <td className="px-6 py-3 text-brand-ink">
-                          {p.remaining_sessions}/{p.total_sessions}
-                        </td>
-                        <td className="px-6 py-3 text-brand-ink-soft">{formatDate(p.purchased_at)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table bare>
+                <TableHead>
+                  <tr>
+                    <TableHeaderCell>Học viên</TableHeaderCell>
+                    <TableHeaderCell>Gói dịch vụ</TableHeaderCell>
+                    <TableHeaderCell>Giá</TableHeaderCell>
+                    <TableHeaderCell>Buổi còn lại</TableHeaderCell>
+                    <TableHeaderCell>Ngày mua</TableHeaderCell>
+                  </tr>
+                </TableHead>
+                <TableBody>
+                  {filteredPurchases.map((p) => (
+                    <TableRow key={p.id} onClick={() => setSelectedPurchase(p)}>
+                      <TableCell className="whitespace-normal">
+                        <p className="font-medium text-brand-ink">{p.candidate.full_name || p.candidate.email}</p>
+                        <p className="text-xs text-brand-ink-soft">{p.candidate.email}</p>
+                      </TableCell>
+                      <TableCell className="text-brand-ink">{p.service_name}</TableCell>
+                      <TableCell className="text-brand-ink">{formatCurrencyVnd(p.price)}</TableCell>
+                      <TableCell className="text-brand-ink">
+                        {p.remaining_sessions}/{p.total_sessions}
+                      </TableCell>
+                      <TableCell>{formatDate(p.purchased_at)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </div>
         </div>

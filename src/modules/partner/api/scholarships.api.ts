@@ -25,4 +25,6 @@ export const scholarshipsApi = {
       .then((r) => r.data),
   removeRequirement: (id: string, requirementId: string) =>
     http.delete<{ deleted: boolean }>(`/scholarships/${id}/requirements/${requirementId}`).then((r) => r.data),
+  exportOwn: (params: { q?: string; is_active?: boolean; from?: string; to?: string }) =>
+    http.get('/scholarships/export', { params, responseType: 'blob' }).then((r) => r.data as Blob),
 }

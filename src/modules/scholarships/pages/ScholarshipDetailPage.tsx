@@ -5,14 +5,27 @@ import { SiteFooter } from '@/shared/components/layout/SiteFooter'
 import { ScholarshipCard } from '@/modules/scholarships/components/ScholarshipCard'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
+import { Modal } from '@/shared/components/ui/Modal'
+import { ScoreDonut } from '@/shared/components/ui/ScoreDonut'
 import { formatCurrencyVnd, formatDate } from '@/shared/lib/format'
 import { scholarshipsApi } from '@/modules/scholarships/api/scholarships.api'
 import { partnersApi } from '@/modules/scholarships/api/partners.api'
 import { interactionsApi } from '@/modules/scholarships/api/interactions.api'
 import { recommendationsApi } from '@/modules/scholarships/api/recommendations.api'
+import { CRITERION_LABELS, MATCH_LABELS, scholarshipLocationLabel } from '@/modules/scholarships/components/badges'
 import { useAuth } from '@/modules/auth/AuthContext'
 import { useToast } from '@/shared/components/ui/ToastProvider'
 import { ApiError } from '@/shared/api/types'
+import {
+  IconAward,
+  IconCalendarClock,
+  IconCheckCircle,
+  IconGraduationCap,
+  IconMapPin,
+  IconPencil,
+  IconUsers,
+  IconWallet,
+} from '@/modules/mentor/components/icons'
 import type { MatchResult, PartnerProfile, Scholarship } from '@/modules/scholarships/types'
 
 export function ScholarshipDetailPage() {
@@ -20,13 +33,14 @@ export function ScholarshipDetailPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { notify } = useToast()
-  const isCandidate = user?.role === 'candidate'
+  const isCandidate = Boolean(user?.roles.includes('candidate'))
 
   const [scholarship, setScholarship] = useState<Scholarship | null>(null)
   const [partner, setPartner] = useState<PartnerProfile | null>(null)
   const [related, setRelated] = useState<Scholarship[]>([])
   const [match, setMatch] = useState<MatchResult | null>(null)
   const [matchLoading, setMatchLoading] = useState(false)
+  const [matchModalOpen, setMatchModalOpen] = useState(false)
   const [savedInteractionId, setSavedInteractionId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -129,54 +143,91 @@ export function ScholarshipDetailPage() {
 
         <div className="flex flex-col gap-6 lg:flex-row">
           <div className="min-w-0 flex-1 space-y-6">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="flex flex-wrap items-start gap-4">
-                {scholarship.image_url && (
-                  <img src={scholarship.image_url} alt="" className="size-20 rounded-xl object-cover" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <h1 className="text-xl font-bold text-brand-ink">{scholarship.title}</h1>
-                  {partner && (
-                    <Link to={`/nha-tai-tro/${partner.id}`} className="text-sm text-brand-blue-600 hover:underline">
-                      {partner.company_name}
-                    </Link>
-                  )}
-                  <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-brand-ink-soft">
-                    {scholarship.location_province_city && <span>📍 {scholarship.location_province_city}</span>}
-                    <span>💰 {formatCurrencyVnd(scholarship.total_budget)}</span>
-                    <span>🎓 {scholarship.total_slots != null ? `${scholarship.total_slots} suất` : 'Không giới hạn suất'}</span>
-                    <span>📅 Hạn nộp: {formatDate(scholarship.deadline)}</span>
+            {/* Ảnh đại diện học bổng nằm ngay trong box giới thiệu (không phải banner rời bên ngoài) —
+                logo đối tác (nếu có) nổi lên góc dưới trái ảnh, cùng kiểu overlap đã dùng ở trang mentor. */}
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+              <div className="relative h-48 bg-slate-100 sm:h-64">
+                {scholarship.image_url ? (
+                  <img src={scholarship.image_url} alt="" className="size-full object-cover" />
+                ) : (
+                  <div className="flex size-full items-center justify-center bg-linear-to-br from-brand-blue-500 via-brand-blue-400 to-brand-cocoa-500">
+                    <IconGraduationCap className="size-14 text-white/80" />
                   </div>
+                )}
+                {partner?.logo_url && (
+                  <div className="absolute bottom-4 left-5 size-16 overflow-hidden rounded-2xl border-4 border-white bg-white shadow-lg">
+                    <img src={partner.logo_url} alt="" className="size-full object-contain" />
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6">
+                <h1 className="text-xl font-black text-brand-ink sm:text-2xl">{scholarship.title}</h1>
+                {partner && (
+                  <Link to={`/nha-tai-tro/${partner.id}`} className="text-sm font-medium text-brand-blue-600 hover:underline">
+                    {partner.company_name}
+                  </Link>
+                )}
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <FactChip tone="blue" icon={<IconWallet className="size-4.5" />} label="Giá trị" value={formatCurrencyVnd(scholarship.total_budget)} />
+                  <FactChip
+                    tone="green"
+                    icon={<IconUsers className="size-4.5" />}
+                    label="Số suất"
+                    value={scholarship.total_slots != null ? `${scholarship.total_slots} suất` : 'Không giới hạn'}
+                  />
+                  <FactChip tone="amber" icon={<IconCalendarClock className="size-4.5" />} label="Hạn nộp" value={formatDate(scholarship.deadline)} />
+                  <FactChip
+                    tone="violet"
+                    icon={<IconMapPin className="size-4.5" />}
+                    label="Khu vực"
+                    value={scholarshipLocationLabel(scholarship)}
+                  />
                 </div>
               </div>
             </div>
 
-            <Section title="Tổng quan">
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="mb-3 text-lg font-bold text-brand-ink">Tổng quan</h2>
               <p className="whitespace-pre-line text-sm leading-relaxed text-brand-ink-soft">{scholarship.description}</p>
-            </Section>
+            </div>
 
-            <Section title="Điều kiện">
-              <ul className="list-disc space-y-1.5 pl-5 text-sm text-brand-ink-soft">
-                {scholarship.min_gpa != null && <li>GPA từ {scholarship.min_gpa.toFixed(2)} trở lên.</li>}
-                {scholarship.majors.length > 0 && (
-                  <li>Thuộc ngành: {scholarship.majors.map((m) => m.name).join(', ')}.</li>
-                )}
-                {!scholarship.is_no_essay && <li>Nộp kèm bài luận cá nhân.</li>}
-                <li>Nộp hồ sơ trước hạn {formatDate(scholarship.deadline)}.</li>
-              </ul>
-            </Section>
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="mb-4 text-lg font-bold text-brand-ink">Điều kiện</h2>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <RequirementTile
+                  icon={<IconAward className="size-5" />}
+                  title="GPA tối thiểu"
+                  description={scholarship.min_gpa != null ? `Từ ${scholarship.min_gpa.toFixed(2)} trở lên` : 'Không yêu cầu'}
+                />
+                <RequirementTile
+                  icon={<IconPencil className="size-5" />}
+                  title="Bài luận cá nhân"
+                  description={scholarship.is_no_essay ? 'Không yêu cầu' : 'Bắt buộc nộp kèm'}
+                />
+                <RequirementTile
+                  icon={<IconGraduationCap className="size-5" />}
+                  title="Ngành xét tuyển"
+                  description={scholarship.majors.length > 0 ? scholarship.majors.map((m) => m.name).join(', ') : 'Tất cả ngành'}
+                />
+                <RequirementTile
+                  icon={<IconCalendarClock className="size-5" />}
+                  title="Thời gian nộp hồ sơ"
+                  description={`${scholarship.start_date ? `${formatDate(scholarship.start_date)} - ` : 'Trước '}${formatDate(scholarship.deadline)}`}
+                />
+              </div>
+            </div>
 
-            {scholarship.required_certificates.length > 0 && (
-              <Section title="Hồ sơ bắt buộc">
-                <ul className="list-disc space-y-1.5 pl-5 text-sm text-brand-ink-soft">
-                  <li>CV</li>
-                  {!scholarship.is_no_essay && <li>Bài luận cá nhân</li>}
-                  {scholarship.required_certificates.map((c) => (
-                    <li key={c.id}>Chứng chỉ {c.certificate_type}</li>
-                  ))}
-                </ul>
-              </Section>
-            )}
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="mb-4 text-lg font-bold text-brand-ink">Hồ sơ bắt buộc</h2>
+              <div className="flex flex-wrap gap-2">
+                <DocumentChip icon={<IconCheckCircle className="size-3.5" />} label="CV" />
+                {!scholarship.is_no_essay && <DocumentChip icon={<IconPencil className="size-3.5" />} label="Bài luận cá nhân" />}
+                {scholarship.required_certificates.map((c) => (
+                  <DocumentChip key={c.id} icon={<IconAward className="size-3.5" />} label={`Chứng chỉ ${c.certificate_type}`} />
+                ))}
+              </div>
+            </div>
 
             {related.length > 0 && (
               <div>
@@ -205,18 +256,16 @@ export function ScholarshipDetailPage() {
               ) : matchLoading ? (
                 <Spinner />
               ) : match ? (
-                <div className="space-y-3">
-                  <div className="text-center">
-                    <p className="text-3xl font-extrabold text-brand-blue-600">{match.score}%</p>
-                    <p className="text-xs text-brand-ink-soft">Độ phù hợp</p>
-                  </div>
-                  <ul className="space-y-2">
-                    {match.breakdown.map((b) => (
-                      <li key={b.criterion} className="text-xs text-brand-ink-soft">
-                        <span className="font-semibold text-brand-ink">{Math.round(b.score)}/{b.max_score}</span> — {b.reason}
-                      </li>
-                    ))}
-                  </ul>
+                <div className="flex flex-col items-center gap-2">
+                  <ScoreDonut score={match.score} onClick={() => setMatchModalOpen(true)} />
+                  <p className="text-sm font-semibold text-brand-ink">{MATCH_LABELS[match.label]}</p>
+                  <button
+                    type="button"
+                    onClick={() => setMatchModalOpen(true)}
+                    className="text-xs font-semibold text-brand-blue-600 hover:underline"
+                  >
+                    Xem chi tiết 4 tiêu chí →
+                  </button>
                 </div>
               ) : (
                 <p className="text-sm text-brand-ink-soft">Không thể tải điểm phù hợp lúc này.</p>
@@ -224,18 +273,9 @@ export function ScholarshipDetailPage() {
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <dl className="mb-4 space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <dt className="text-brand-ink-soft">Thời hạn</dt>
-                  <dd className="font-semibold text-brand-ink">{formatDate(scholarship.deadline)}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-brand-ink-soft">Giá trị học bổng</dt>
-                  <dd className="font-semibold text-brand-ink">
-                    {scholarship.total_budget != null ? formatCurrencyVnd(scholarship.total_budget) : scholarship.value_type}
-                  </dd>
-                </div>
-              </dl>
+              <p className="mb-4 text-sm text-brand-ink-soft">
+                Sẵn sàng ứng tuyển? Hoàn thiện hồ sơ và nộp trước <span className="font-semibold text-brand-ink">{formatDate(scholarship.deadline)}</span>.
+              </p>
               <div className="flex flex-col gap-2">
                 <Link to={`/hoc-bong/${scholarship.id}/ung-tuyen`}>
                   <Button className="w-full">Ứng tuyển ngay</Button>
@@ -250,15 +290,89 @@ export function ScholarshipDetailPage() {
       </div>
 
       <SiteFooter />
+
+      {match && (
+        <Modal open={matchModalOpen} onClose={() => setMatchModalOpen(false)} title="Chi tiết độ phù hợp AI Match">
+          <div className="space-y-4">
+            <div className="flex flex-col items-center gap-1 border-b border-slate-100 pb-4">
+              <ScoreDonut score={match.score} size={96} />
+              <p className="text-sm font-semibold text-brand-ink">{MATCH_LABELS[match.label]}</p>
+            </div>
+            <ul className="space-y-4">
+              {match.breakdown.map((b) => (
+                <li key={b.criterion} className="text-sm text-brand-ink-soft">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-brand-ink">{CRITERION_LABELS[b.criterion] ?? b.criterion}</span>
+                    {b.applicable ? (
+                      <span className="shrink-0 font-semibold text-brand-blue-600">
+                        {Math.round(b.score)}/{b.max_score}
+                      </span>
+                    ) : (
+                      <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-brand-ink-soft">
+                        Chưa áp dụng
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 text-xs">{b.reason}</p>
+                </li>
+              ))}
+            </ul>
+            <p className="text-[11px] text-brand-ink-soft">
+              Điểm tổng chỉ tính trên các tiêu chí đã đủ dữ liệu để chấm — tiêu chí "Chưa áp dụng" không bị trừ điểm.
+            </p>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+const FACT_CHIP_TONES = {
+  blue: 'bg-brand-blue-50 text-brand-blue-600',
+  green: 'bg-emerald-50 text-emerald-600',
+  amber: 'bg-amber-50 text-amber-600',
+  violet: 'bg-violet-50 text-violet-600',
+} as const
+
+function FactChip({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: ReactNode
+  label: string
+  value: string
+  tone: keyof typeof FACT_CHIP_TONES
+}) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="mb-3 border-l-4 border-brand-blue-500 pl-3 text-lg font-bold text-brand-ink">{title}</h2>
-      {children}
+    <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 px-3.5 py-3">
+      <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${FACT_CHIP_TONES[tone]}`}>{icon}</span>
+      <div className="min-w-0">
+        <p className="text-[11px] font-medium text-brand-ink-soft">{label}</p>
+        <p className="truncate text-sm font-bold text-brand-ink">{value}</p>
+      </div>
     </div>
+  )
+}
+
+function RequirementTile({ icon, title, description }: { icon: ReactNode; title: string; description: string }) {
+  return (
+    <div className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-brand-blue-500 shadow-sm">{icon}</span>
+      <div className="min-w-0">
+        <p className="text-sm font-bold text-brand-ink">{title}</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-brand-ink-soft">{description}</p>
+      </div>
+    </div>
+  )
+}
+
+function DocumentChip({ icon, label }: { icon: ReactNode; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-blue-100 bg-brand-blue-50 px-3 py-1.5 text-xs font-medium text-brand-blue-700">
+      {icon}
+      {label}
+    </span>
   )
 }

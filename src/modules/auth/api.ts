@@ -19,6 +19,9 @@ export const authApi = {
 
   login: (payload: LoginPayload) => http.post<AuthTokens>('/auth/login', payload).then((r) => r.data),
 
+  loginWithGoogle: (idToken: string) =>
+    http.post<AuthTokens>('/auth/google', { id_token: idToken }).then((r) => r.data),
+
   logout: async () => {
     const refreshToken = tokenStorage.getRefreshToken()
     try {

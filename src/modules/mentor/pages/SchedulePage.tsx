@@ -7,8 +7,10 @@ import { Button } from '@/shared/components/ui/Button'
 import { Modal } from '@/shared/components/ui/Modal'
 import { Field } from '@/shared/components/ui/Field'
 import { Input } from '@/shared/components/ui/Input'
+import { Select } from '@/shared/components/ui/Select'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '@/shared/components/ui/Table'
 import { useToast } from '@/shared/components/ui/ToastProvider'
 import { ApiError } from '@/shared/api/types'
 import { formatDate } from '@/shared/lib/format'
@@ -74,6 +76,18 @@ export function SchedulePage() {
         .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()),
     [sessions],
   )
+
+  const [historyQuery, setHistoryQuery] = useState('')
+  const [historyStatus, setHistoryStatus] = useState('')
+  const filteredHistory = useMemo(() => {
+    const q = historyQuery.trim().toLowerCase()
+    return history.filter((s) => {
+      if (historyStatus && s.status !== historyStatus) return false
+      if (!q) return true
+      return s.topic.toLowerCase().includes(q) || studentLabel(s).toLowerCase().includes(q)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- studentLabel closes over candidateByPurchase, không cần thêm vào deps vì cùng cập nhật với sessions
+  }, [history, historyQuery, historyStatus])
 
   const weekStart = useMemo(() => getWeekStart(new Date(), weekOffset), [weekOffset])
   const weekDays = useMemo(
@@ -224,39 +238,57 @@ export function SchedulePage() {
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 font-bold text-brand-ink">Lịch sử ({history.length})</h2>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-bold text-brand-ink">Lịch sử ({history.length})</h2>
+              {history.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    className="h-9 w-56"
+                    placeholder="Tìm theo chủ đề, học viên..."
+                    value={historyQuery}
+                    onChange={(e) => setHistoryQuery(e.target.value)}
+                  />
+                  <Select className="h-9 w-40" value={historyStatus} onChange={(e) => setHistoryStatus(e.target.value)}>
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="completed">Hoàn thành</option>
+                    <option value="canceled">Đã huỷ</option>
+                    <option value="rescheduled">Đã dời lịch</option>
+                  </Select>
+                </div>
+              )}
+            </div>
             {history.length === 0 ? (
               <p className="text-sm text-brand-ink-soft">Chưa có buổi hẹn nào hoàn thành/bị huỷ.</p>
+            ) : filteredHistory.length === 0 ? (
+              <p className="text-sm text-brand-ink-soft">Không có buổi hẹn nào khớp với bộ lọc hiện tại.</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-left text-xs text-brand-ink-soft">
-                      <th className="py-2 pr-4 font-medium">Buổi học</th>
-                      <th className="py-2 pr-4 font-medium">Học viên</th>
-                      <th className="py-2 pr-4 font-medium">Thời gian</th>
-                      <th className="py-2 pr-4 font-medium">Trạng thái</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {history.map((s) => (
-                      <tr key={s.id} className="border-b border-slate-50 last:border-0">
-                        <td className="py-3 pr-4">
-                          <p className="font-medium text-brand-ink">{s.topic}</p>
-                          {s.cancel_reason && <p className="text-xs text-brand-ink-soft">Lý do huỷ: {s.cancel_reason}</p>}
-                        </td>
-                        <td className="py-3 pr-4 text-brand-ink-soft">{studentLabel(s)}</td>
-                        <td className="py-3 pr-4 text-brand-ink-soft">
-                          {formatDate(s.start_time)} · {formatTimeRange(s.start_time, s.end_time)}
-                        </td>
-                        <td className="py-3 pr-4">
-                          <SessionStatusBadge status={s.status} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table bare>
+                <TableHead>
+                  <tr>
+                    <TableHeaderCell>Buổi học</TableHeaderCell>
+                    <TableHeaderCell>Học viên</TableHeaderCell>
+                    <TableHeaderCell>Thời gian</TableHeaderCell>
+                    <TableHeaderCell>Trạng thái</TableHeaderCell>
+                  </tr>
+                </TableHead>
+                <TableBody>
+                  {filteredHistory.map((s) => (
+                    <TableRow key={s.id}>
+                      <TableCell className="whitespace-normal">
+                        <p className="font-medium text-brand-ink">{s.topic}</p>
+                        {s.cancel_reason && <p className="text-xs text-brand-ink-soft">Lý do huỷ: {s.cancel_reason}</p>}
+                      </TableCell>
+                      <TableCell>{studentLabel(s)}</TableCell>
+                      <TableCell>
+                        {formatDate(s.start_time)} · {formatTimeRange(s.start_time, s.end_time)}
+                      </TableCell>
+                      <TableCell>
+                        <SessionStatusBadge status={s.status} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </section>
         </div>

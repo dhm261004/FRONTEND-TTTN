@@ -3,16 +3,30 @@
 @theme {
   --font-sans: 'Be Vietnam Pro', system-ui, 'Segoe UI', Roboto, sans-serif;
 
-  --color-brand-blue-50: #eaf6ff;
-  --color-brand-blue-100: #d7eeff;
-  --color-brand-blue-400: #4bb0ff;
-  --color-brand-blue-500: #279af2;
-  --color-brand-blue-600: #1483dc;
-  --color-brand-blue-700: #106bb6;
+  --color-brand-blue-50: #f0f8ff;
+  --color-brand-blue-100: #dbf0ff;
+  --color-brand-blue-200: #b9e0fd;
+  --color-brand-blue-300: #8accff;
+  --color-brand-blue-400: #66bdff;
+  --color-brand-blue-500: #40acff;
+  --color-brand-blue-600: #1094f9;
+  --color-brand-blue-700: #0a72c2;
+  --color-brand-blue-800: #0b4f84;
+  --color-brand-blue-900: #072b48;
 
   --color-brand-yellow-300: #ffd469;
   --color-brand-yellow-400: #ffc93e;
   --color-brand-yellow-500: #f5b400;
+
+  /* Ấm, lấy từ màu linh vật (hero-mascot.png/guide-mascot.png) — dùng làm điểm nhấn thứ hai bên
+     cạnh brand-blue/yellow để trang chủ và trang mentor bớt "toàn xanh", có nhịp màu ấm-lạnh xen kẽ. */
+  --color-brand-cocoa-50: #fbf3ec;
+  --color-brand-cocoa-100: #f3e1d0;
+  --color-brand-cocoa-300: #d29d72;
+  --color-brand-cocoa-400: #b97a4c;
+  --color-brand-cocoa-500: #93583a;
+  --color-brand-cocoa-600: #7a4530;
+  --color-brand-cocoa-700: #5f3626;
 
   --color-brand-ink: #1c2027;
   --color-brand-ink-soft: #5b6472;

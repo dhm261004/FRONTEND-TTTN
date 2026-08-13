@@ -1,4 +1,4 @@
-import { StatusText } from '@/shared/components/ui/Badge'
+import { Badge } from '@/shared/components/ui/Badge'
 import type { Scholarship } from '@/modules/partner/types'
 
 export function getScholarshipStatus(scholarship: Pick<Scholarship, 'is_active' | 'deadline'>) {
@@ -10,5 +10,5 @@ export function getScholarshipStatus(scholarship: Pick<Scholarship, 'is_active' 
 
 export function ScholarshipStatusBadge({ scholarship }: { scholarship: Pick<Scholarship, 'is_active' | 'deadline'> }) {
   const status = getScholarshipStatus(scholarship)
-  return <StatusText tone={status.tone}>{status.label}</StatusText>
+  return <Badge tone={status.tone}>{status.label}</Badge>
 }

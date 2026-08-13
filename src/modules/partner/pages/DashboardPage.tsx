@@ -16,6 +16,7 @@ import { scholarshipsApi } from '@/modules/partner/api/scholarships.api'
 import { partnerProfileApi } from '@/modules/partner/api/partnerProfile.api'
 import type { PartnerStats, Scholarship } from '@/modules/partner/types'
 import { formatDate } from '@/shared/lib/format'
+import { downloadBlob } from '@/shared/lib/download'
 import {
   IconBriefcase,
   IconCheckCircle,
@@ -51,6 +52,7 @@ export function DashboardPage() {
   const [stats, setStats] = useState<PartnerStats | null>(null)
   const [scholarshipFilter, setScholarshipFilter] = useState('')
   const [monthFilter, setMonthFilter] = useState('')
+  const [exporting, setExporting] = useState(false)
 
   const monthOptions = useMemo(() => recentMonthOptions(), [])
 
@@ -66,6 +68,18 @@ export function DashboardPage() {
       .getStats({ scholarship_id: scholarshipFilter || undefined, ...monthToRange(monthFilter) })
       .then(setStats)
   }, [profile, scholarshipFilter, monthFilter])
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const blob = await partnerProfileApi.exportStats({ scholarship_id: scholarshipFilter || undefined, ...monthToRange(monthFilter) })
+      downloadBlob(blob, 'thong-ke-doi-tac.xlsx')
+    } catch {
+      notify('Không thể xuất file Excel. Vui lòng thử lại.', 'error')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const scopedScholarships = scholarshipFilter ? (scholarships ?? []).filter((s) => s.id === scholarshipFilter) : scholarships ?? []
 
@@ -86,11 +100,7 @@ export function DashboardPage() {
             Cập nhật lần cuối: {new Intl.DateTimeFormat('vi-VN').format(new Date())}
           </p>
         </div>
-        <Button
-          variant="secondary"
-          icon={<IconDownload className="size-4" />}
-          onClick={() => notify('Xuất báo cáo chưa được hỗ trợ ở phiên bản hiện tại.', 'error')}
-        >
+        <Button variant="secondary" icon={<IconDownload className="size-4" />} loading={exporting} onClick={handleExport}>
           Xuất báo cáo
         </Button>
       </div>

@@ -24,7 +24,6 @@ const schema = z
   .object({
     title: z.string().min(1, 'Vui lòng nhập tên học bổng'),
     degree: z.string().min(1, 'Vui lòng chọn bậc học'),
-    location_province_city: z.string().optional(),
     description: z.string().min(1, 'Vui lòng nhập mô tả'),
     value_type: z.string().min(1, 'Vui lòng chọn loại giá trị'),
     funding_percentage: z
@@ -75,6 +74,8 @@ export function ScholarshipFormPage() {
   const { profile } = usePartnerProfile()
 
   const [provinces, setProvinces] = useState<Province[]>([])
+  const [selectedProvinces, setSelectedProvinces] = useState<string[]>([])
+  const [provinceToAdd, setProvinceToAdd] = useState('')
   const [majorsCatalog, setMajorsCatalog] = useState<Major[]>([])
   const [selectedMajorIds, setSelectedMajorIds] = useState<number[]>([])
   const [majorBusy, setMajorBusy] = useState<number | null>(null)
@@ -101,7 +102,6 @@ export function ScholarshipFormPage() {
     defaultValues: {
       title: '',
       degree: 'undergraduate',
-      location_province_city: '',
       description: '',
       value_type: 'percentage',
       funding_percentage: '',
@@ -126,7 +126,6 @@ export function ScholarshipFormPage() {
       reset({
         title: s.title,
         degree: s.degree,
-        location_province_city: s.location_province_city ?? '',
         description: s.description,
         value_type: s.value_type,
         funding_percentage: s.funding_percentage != null ? String(s.funding_percentage) : '',
@@ -139,6 +138,7 @@ export function ScholarshipFormPage() {
         is_active: s.is_active,
       })
       setSelectedMajorIds(s.majors.map((m) => m.id))
+      setSelectedProvinces(s.location_province_cities)
       setRequirements(s.required_certificates)
       setImagePreview(s.image_url)
       setLoadingScholarship(false)
@@ -154,7 +154,7 @@ export function ScholarshipFormPage() {
       title: values.title,
       description: values.description,
       degree: values.degree,
-      location_province_city: values.location_province_city || null,
+      location_province_cities: selectedProvinces,
       value_type: values.value_type,
       funding_percentage: values.value_type === 'percentage' && values.funding_percentage ? Number(values.funding_percentage) : null,
       total_slots: values.total_slots ? Number(values.total_slots) : null,
@@ -215,6 +215,16 @@ export function ScholarshipFormPage() {
       setPendingImageFile(file)
       setImagePreview(URL.createObjectURL(file))
     }
+  }
+
+  const addProvince = () => {
+    if (!provinceToAdd) return
+    setSelectedProvinces((prev) => (prev.includes(provinceToAdd) ? prev : [...prev, provinceToAdd]))
+    setProvinceToAdd('')
+  }
+
+  const removeProvince = (name: string) => {
+    setSelectedProvinces((prev) => prev.filter((v) => v !== name))
   }
 
   const toggleMajor = async (majorId: number) => {
@@ -308,15 +318,50 @@ export function ScholarshipFormPage() {
               </Select>
             </Field>
 
-            <Field label="Khu vực áp dụng">
-              <Select {...register('location_province_city')}>
-                <option value="">-- Chọn tỉnh/thành phố --</option>
-                {provinces.map((p) => (
-                  <option key={p.code} value={p.name}>
-                    {p.name}
-                  </option>
-                ))}
-              </Select>
+            <Field
+              label="Khu vực áp dụng"
+              hint="Không chọn tỉnh/thành nào nghĩa là học bổng áp dụng Toàn quốc"
+              className="md:col-span-2"
+            >
+              <div className="flex gap-2">
+                <Select value={provinceToAdd} onChange={(e) => setProvinceToAdd(e.target.value)}>
+                  <option value="">-- Chọn tỉnh/thành để thêm --</option>
+                  {provinces
+                    .filter((p) => !selectedProvinces.includes(p.name))
+                    .map((p) => (
+                      <option key={p.code} value={p.name}>
+                        {p.name}
+                      </option>
+                    ))}
+                </Select>
+                <Button type="button" variant="secondary" disabled={!provinceToAdd} onClick={addProvince}>
+                  Thêm
+                </Button>
+              </div>
+              {selectedProvinces.length > 0 ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {selectedProvinces.map((name) => (
+                    <span
+                      key={name}
+                      className="flex items-center gap-1.5 rounded-full bg-brand-blue-50 px-3 py-1 text-xs font-medium text-brand-blue-600"
+                    >
+                      {name}
+                      <button type="button" onClick={() => removeProvince(name)} className="text-brand-blue-400 hover:text-red-500">
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedProvinces([])}
+                    className="text-xs text-brand-ink-soft underline hover:text-red-500"
+                  >
+                    Xoá tất cả (Toàn quốc)
+                  </button>
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-brand-ink-soft">Chưa chọn tỉnh/thành nào — học bổng áp dụng Toàn quốc.</p>
+              )}
             </Field>
 
             <Field label="Mô tả học bổng" required error={errors.description?.message} className="md:col-span-2">

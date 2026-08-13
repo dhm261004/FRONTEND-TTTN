@@ -3,7 +3,7 @@ export type UserRole = 'candidate' | 'partner' | 'mentor' | 'admin'
 export interface UserPublic {
   id: string
   email: string
-  role: UserRole
+  roles: UserRole[]
   is_email_verified: boolean
 }
 

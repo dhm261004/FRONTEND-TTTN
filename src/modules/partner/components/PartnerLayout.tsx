@@ -19,6 +19,7 @@ export function PartnerLayout({ nav, children }: { nav: PartnerNavItem[]; childr
           ]}
           userLabel={user?.email}
           onLogout={logout}
+          accountTo="/doi-tac/ho-so"
         />
         <div className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-6 px-6 py-8 lg:flex-row">
           <PartnerSidebar items={nav} />

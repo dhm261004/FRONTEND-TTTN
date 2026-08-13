@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { PublicHeader } from '@/modules/scholarships/components/PublicHeader'
 import { SiteFooter } from '@/shared/components/layout/SiteFooter'
 import { ScholarshipCard } from '@/modules/scholarships/components/ScholarshipCard'
@@ -22,9 +22,18 @@ export function ScholarshipListPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { notify } = useToast()
-  const isCandidate = user?.role === 'candidate'
+  const isCandidate = Boolean(user?.roles.includes('candidate'))
 
-  const [filters, setFilters] = useState<ScholarshipFilterValues>(EMPTY_FILTERS)
+  // Cho phép trang Home điều hướng tới đây kèm bộ lọc đã chọn qua query string (?q=&major_id=&...).
+  const [searchParams] = useSearchParams()
+  const [filters, setFilters] = useState<ScholarshipFilterValues>(() => ({
+    q: searchParams.get('q') ?? EMPTY_FILTERS.q,
+    major_id: searchParams.get('major_id') ?? EMPTY_FILTERS.major_id,
+    degree: searchParams.get('degree') ?? EMPTY_FILTERS.degree,
+    location_province_city: searchParams.get('location_province_city') ?? EMPTY_FILTERS.location_province_city,
+    value_type: searchParams.get('value_type') ?? EMPTY_FILTERS.value_type,
+    gpa: searchParams.get('gpa') ?? EMPTY_FILTERS.gpa,
+  }))
   const [debouncedFilters, setDebouncedFilters] = useState(filters)
   const [page, setPage] = useState(1)
   const [majors, setMajors] = useState<Major[]>([])
@@ -71,6 +80,7 @@ export function ScholarshipListPage() {
       location_province_city: debouncedFilters.location_province_city || undefined,
       value_type: debouncedFilters.value_type || undefined,
       major_id: debouncedFilters.major_id ? Number(debouncedFilters.major_id) : undefined,
+      gpa: debouncedFilters.gpa ? Number(debouncedFilters.gpa) : undefined,
       is_active: true,
       page,
       limit: PAGE_SIZE,

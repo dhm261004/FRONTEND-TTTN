@@ -16,6 +16,7 @@ import { mentorProfileApi } from '@/modules/mentor/api/mentorProfile.api'
 import { ApiError } from '@/shared/api/types'
 
 const schema = z.object({
+  full_name: z.string().trim().max(255).optional(),
   job_title: z.string().trim().max(255).optional(),
   bio: z.string().trim().min(1, 'Vui lòng giới thiệu ngắn về bản thân').optional(),
 })
@@ -39,6 +40,7 @@ export function CreateMentorProfilePage() {
     setServerError(null)
     try {
       const profile = await mentorProfileApi.create({
+        full_name: values.full_name || undefined,
         job_title: values.job_title || undefined,
         bio: values.bio || undefined,
       })
@@ -59,6 +61,9 @@ export function CreateMentorProfilePage() {
           Vui lòng hoàn tất hồ sơ mentor trước khi đăng dịch vụ cố vấn và bắt đầu nhận học viên.
         </p>
         <form className="flex flex-col gap-5 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm" onSubmit={handleSubmit(onSubmit)}>
+          <Field label="Họ và tên" hint="Hiển thị công khai trên hồ sơ mentor của bạn">
+            <Input placeholder="Nhập họ và tên" {...register('full_name')} />
+          </Field>
           <Field label="Chức danh" hint="VD: Kỹ sư phần mềm tại Google, Cựu du học sinh Mỹ...">
             <Input placeholder="Nhập chức danh" {...register('job_title')} />
           </Field>

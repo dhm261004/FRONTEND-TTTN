@@ -4,10 +4,10 @@ import { PartnerLayout } from '@/modules/partner/components/PartnerLayout'
 import { MANAGEMENT_NAV } from '@/modules/partner/components/nav'
 import { Button } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
-import { Select } from '@/shared/components/ui/Select'
-import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { Pagination } from '@/shared/components/ui/Pagination'
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '@/shared/components/ui/Table'
+import { CheckboxFilterDropdown } from '@/shared/components/ui/CheckboxFilterDropdown'
 import { useToast } from '@/shared/components/ui/ToastProvider'
 import { ScholarshipStatusBadge } from '@/modules/partner/components/ScholarshipStatusBadge'
 import { usePartnerProfile } from '@/modules/partner/PartnerProfileContext'
@@ -15,11 +15,18 @@ import { scholarshipsApi } from '@/modules/partner/api/scholarships.api'
 import { partnerProfileApi } from '@/modules/partner/api/partnerProfile.api'
 import type { PartnerStatsByProgram, Scholarship } from '@/modules/partner/types'
 import { formatCurrencyVnd, formatDate } from '@/shared/lib/format'
+import { downloadBlob } from '@/shared/lib/download'
 import { IconDownload, IconSearch } from '@/modules/partner/components/icons'
+import { IconPencil } from '@/modules/mentor/components/icons'
+import { IconTrash } from '@/modules/mentors/cart/icons'
 
 const PAGE_SIZE = 8
 
-type StatusFilter = 'all' | 'open' | 'closed'
+const STATUS_OPTIONS = [
+  { value: 'open', label: 'Đang mở đơn', dotClassName: 'bg-emerald-500' },
+  { value: 'closed', label: 'Đã đóng đơn', dotClassName: 'bg-slate-400' },
+]
+
 type SortField = 'title' | 'deadline' | 'applications_count' | 'total_budget'
 type SortOrder = 'asc' | 'desc'
 
@@ -42,26 +49,6 @@ function IconCalendar({ className = 'size-4' }: { className?: string }) {
   )
 }
 
-// Icon Sort mũi tên
-function SortIcon({ active, order }: { active: boolean; order: SortOrder }) {
-  if (!active) {
-    return (
-      <svg className="ml-1 inline-block size-3.5 text-slate-400 opacity-0 group-hover/th:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-      </svg>
-    )
-  }
-  return order === 'asc' ? (
-    <svg className="ml-1 inline-block size-3.5 text-brand-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
-    </svg>
-  ) : (
-    <svg className="ml-1 inline-block size-3.5 text-brand-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-    </svg>
-  )
-}
-
 export function ScholarshipListPage() {
   const { profile } = usePartnerProfile()
   const { notify } = useToast()
@@ -69,7 +56,9 @@ export function ScholarshipListPage() {
   const [pages, setPages] = useState(1)
   const [page, setPage] = useState(1)
   const [q, setQ] = useState('')
-  const [status, setStatus] = useState<StatusFilter>('all')
+  const [statusFilter, setStatusFilter] = useState<string[]>([])
+  // Rỗng hoặc chọn cả 2 = không lọc; API chỉ nhận đúng 1 giá trị boolean is_active.
+  const isActiveParam = statusFilter.length === 1 ? statusFilter[0] === 'open' : undefined
 
   // State Ngày bắt đầu & kết thúc (dạng "YYYY-MM-DD")
   const [fromDate, setFromDate] = useState<string>('')
@@ -77,6 +66,7 @@ export function ScholarshipListPage() {
 
   const [loading, setLoading] = useState(true)
   const [byProgram, setByProgram] = useState<Record<string, PartnerStatsByProgram>>({})
+  const [exporting, setExporting] = useState(false)
 
   // State Sắp xếp cột
   const [sortConfig, setSortConfig] = useState<SortConfig>({
@@ -91,7 +81,7 @@ export function ScholarshipListPage() {
       .list({
         partner_profile_id: profile.id,
         q: q || undefined,
-        is_active: status === 'all' ? undefined : status === 'open',
+        is_active: isActiveParam,
         page,
         limit: PAGE_SIZE,
       })
@@ -100,7 +90,7 @@ export function ScholarshipListPage() {
         setPages(res.pagination.pages)
       })
       .finally(() => setLoading(false))
-  }, [profile, q, status, page])
+  }, [profile, q, isActiveParam, page])
 
   useEffect(() => {
     if (!profile) return
@@ -202,6 +192,23 @@ export function ScholarshipListPage() {
     setToDate('')
   }
 
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const blob = await scholarshipsApi.exportOwn({
+        q: q || undefined,
+        is_active: isActiveParam,
+        from: fromDate || undefined,
+        to: toDate || undefined,
+      })
+      downloadBlob(blob, 'danh-sach-hoc-bong.xlsx')
+    } catch {
+      notify('Không thể xuất file Excel. Vui lòng thử lại.', 'error')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <PartnerLayout nav={MANAGEMENT_NAV}>
       {/* Header Trang */}
@@ -236,18 +243,15 @@ export function ScholarshipListPage() {
         </div>
 
         {/* Lọc Trạng thái */}
-        <Select
-          className="w-40 h-10 rounded-xl"
-          value={status}
-          onChange={(e) => {
+        <CheckboxFilterDropdown
+          label="Trạng thái"
+          options={STATUS_OPTIONS}
+          selected={statusFilter}
+          onChange={(next) => {
             setPage(1)
-            setStatus(e.target.value as StatusFilter)
+            setStatusFilter(next)
           }}
-        >
-          <option value="all">Tất cả trạng thái</option>
-          <option value="open">Đang mở đơn</option>
-          <option value="closed">Đã đóng đơn</option>
-        </Select>
+        />
 
         {/* --- CHỈ CHỌN NGÀY (CHỈNH SỬA TYPE="DATE") --- */}
         <div className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50/60 p-1">
@@ -298,149 +302,127 @@ export function ScholarshipListPage() {
           variant="secondary"
           className="ml-auto h-10 rounded-xl"
           icon={<IconDownload className="size-4" />}
-          onClick={() => notify('Xuất báo cáo chưa được hỗ trợ ở phiên bản hiện tại.', 'error')}
+          loading={exporting}
+          onClick={handleExport}
         >
           Xuất báo cáo
         </Button>
       </div>
 
       {/* Bảng Dữ liệu */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        {loading ? (
-          <div className="flex h-64 items-center justify-center">
-            <Spinner />
-          </div>
-        ) : filteredAndSortedItems.length === 0 ? (
-          <EmptyState
-            title="Không tìm thấy học bổng"
-            description={
-              fromDate || toDate || status !== 'all' || q
-                ? 'Không có học bổng nào nằm gọn hoàn toàn trong khoảng ngày đã chọn.'
-                : 'Đăng học bổng đầu tiên để bắt đầu tiếp cận ứng viên.'
-            }
-            action={
-              <Link to="/doi-tac/hoc-bong/moi">
-                <Button size="sm">Đăng tải học bổng mới</Button>
-              </Link>
-            }
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-brand-blue-50/60 text-brand-ink-soft">
-                <tr>
-                  {/* Cột Title */}
-                  <th 
-                    onClick={() => handleSort('title')}
-                    className="group/th px-5 py-3.5 font-medium cursor-pointer select-none hover:bg-brand-blue-100/40 transition-colors"
-                  >
-                    <div className="flex items-center gap-1">
-                      <span>Chương trình học bổng</span>
-                      <SortIcon active={sortConfig.field === 'title'} order={sortConfig.order} />
+      <Table
+        loading={loading}
+        empty={
+          filteredAndSortedItems.length === 0 ? (
+            <EmptyState
+              title="Không tìm thấy học bổng"
+              description={
+                fromDate || toDate || statusFilter.length > 0 || q
+                  ? 'Không có học bổng nào nằm gọn hoàn toàn trong khoảng ngày đã chọn.'
+                  : 'Đăng học bổng đầu tiên để bắt đầu tiếp cận ứng viên.'
+              }
+              action={
+                <Link to="/doi-tac/hoc-bong/moi">
+                  <Button size="sm">Đăng tải học bổng mới</Button>
+                </Link>
+              }
+            />
+          ) : undefined
+        }
+      >
+        <TableHead>
+          <tr>
+            <TableHeaderCell sortable sortActive={sortConfig.field === 'title'} sortOrder={sortConfig.order} onSort={() => handleSort('title')}>
+              Chương trình học bổng
+            </TableHeaderCell>
+            <TableHeaderCell
+              sortable
+              sortActive={sortConfig.field === 'deadline'}
+              sortOrder={sortConfig.order}
+              onSort={() => handleSort('deadline')}
+            >
+              Thời gian & Trạng thái
+            </TableHeaderCell>
+            <TableHeaderCell
+              align="center"
+              sortable
+              sortActive={sortConfig.field === 'applications_count'}
+              sortOrder={sortConfig.order}
+              onSort={() => handleSort('applications_count')}
+            >
+              Số hồ sơ ứng tuyển
+            </TableHeaderCell>
+            <TableHeaderCell
+              align="right"
+              sortable
+              sortActive={sortConfig.field === 'total_budget'}
+              sortOrder={sortConfig.order}
+              onSort={() => handleSort('total_budget')}
+            >
+              Tổng ngân sách
+            </TableHeaderCell>
+            <TableHeaderCell align="right">Thao tác</TableHeaderCell>
+          </tr>
+        </TableHead>
+        <TableBody>
+          {filteredAndSortedItems.map((s) => {
+            const appsCount = byProgram[s.id]?.applications_count ?? '—'
+            return (
+              <TableRow key={s.id}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200/60 bg-slate-100">
+                      {s.image_url ? (
+                        <img src={s.image_url} alt="" className="size-full object-cover" />
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
                     </div>
-                  </th>
+                    <span className="max-w-xs truncate font-medium text-brand-ink sm:max-w-sm">{s.title}</span>
+                  </div>
+                </TableCell>
 
-                  {/* Cột Deadline */}
-                  <th 
-                    onClick={() => handleSort('deadline')}
-                    className="group/th px-5 py-3.5 font-medium cursor-pointer select-none hover:bg-brand-blue-100/40 transition-colors"
-                  >
-                    <div className="flex items-center gap-1">
-                      <span>Thời gian & Trạng thái</span>
-                      <SortIcon active={sortConfig.field === 'deadline'} order={sortConfig.order} />
-                    </div>
-                  </th>
+                <TableCell>
+                  <div className="flex flex-col items-start gap-1">
+                    <ScholarshipStatusBadge scholarship={s} />
+                    <span className="text-xs text-brand-ink-soft">
+                      {s.start_date ? `${formatDate(s.start_date)} – ${formatDate(s.deadline)}` : `Hạn nộp: ${formatDate(s.deadline)}`}
+                    </span>
+                  </div>
+                </TableCell>
 
-                  {/* Cột Applications */}
-                  <th 
-                    onClick={() => handleSort('applications_count')}
-                    className="group/th px-5 py-3.5 font-medium text-center cursor-pointer select-none hover:bg-brand-blue-100/40 transition-colors"
-                  >
-                    <div className="flex items-center justify-center gap-1">
-                      <span>Số hồ sơ ứng tuyển</span>
-                      <SortIcon active={sortConfig.field === 'applications_count'} order={sortConfig.order} />
-                    </div>
-                  </th>
+                <TableCell align="center" className="font-medium">
+                  {appsCount}
+                </TableCell>
 
-                  {/* Cột Budget */}
-                  <th 
-                    onClick={() => handleSort('total_budget')}
-                    className="group/th px-5 py-3.5 font-medium text-right cursor-pointer select-none hover:bg-brand-blue-100/40 transition-colors"
-                  >
-                    <div className="flex items-center justify-end gap-1">
-                      <span>Tổng ngân sách</span>
-                      <SortIcon active={sortConfig.field === 'total_budget'} order={sortConfig.order} />
-                    </div>
-                  </th>
+                <TableCell align="right">{formatCurrencyVnd(s.total_budget)}</TableCell>
 
-                  {/* Thao tác */}
-                  <th className="px-5 py-3.5 font-medium text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredAndSortedItems.map((s) => {
-                  const appsCount = byProgram[s.id]?.applications_count ?? '—'
-                  return (
-                    <tr key={s.id} className="transition-colors hover:bg-slate-50/60">
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 border border-slate-200/60">
-                            {s.image_url ? (
-                              <img src={s.image_url} alt="" className="size-full object-cover" />
-                            ) : (
-                              <span className="text-xs text-slate-400">—</span>
-                            )}
-                          </div>
-                          <span className="font-medium text-brand-ink truncate max-w-xs sm:max-w-sm">
-                            {s.title}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <div className="flex flex-col gap-1 items-start">
-                          <ScholarshipStatusBadge scholarship={s} />
-                          <span className="text-xs text-brand-ink-soft">
-                            {s.start_date 
-                              ? `${formatDate(s.start_date)} – ${formatDate(s.deadline)}` 
-                              : `Hạn nộp: ${formatDate(s.deadline)}`}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="px-5 py-4 text-center whitespace-nowrap text-brand-ink-soft font-medium">
-                        {appsCount}
-                      </td>
-
-                      <td className="px-5 py-4 text-right whitespace-nowrap text-brand-ink-soft">
-                        {formatCurrencyVnd(s.total_budget)}
-                      </td>
-
-                      <td className="px-5 py-4 text-right whitespace-nowrap">
-                        <div className="inline-flex items-center justify-end gap-3">
-                          <Link
-                            to={`/doi-tac/hoc-bong/${s.id}/sua`}
-                            className="text-brand-blue-600 hover:underline font-medium"
-                          >
-                            Sửa
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(s)}
-                            className="text-red-500 hover:underline font-medium"
-                          >
-                            Xoá
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                <TableCell align="right">
+                  <div className="inline-flex items-center justify-end gap-1.5">
+                    <Link
+                      to={`/doi-tac/hoc-bong/${s.id}/sua`}
+                      aria-label="Sửa"
+                      title="Sửa"
+                      className="flex size-8 items-center justify-center rounded-lg text-brand-blue-600 transition-colors hover:bg-brand-blue-50"
+                    >
+                      <IconPencil className="size-4" />
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(s)}
+                      aria-label="Xoá"
+                      title="Xoá"
+                      className="flex size-8 items-center justify-center rounded-lg text-red-500 transition-colors hover:bg-red-50"
+                    >
+                      <IconTrash className="size-4" />
+                    </button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
 
       {/* Phân trang */}
       <div className="mt-6">
