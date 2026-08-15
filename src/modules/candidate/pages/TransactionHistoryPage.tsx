@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { CandidateLayout } from '@/modules/candidate/components/CandidateLayout'
 import { Spinner } from '@/shared/components/ui/Spinner'
@@ -7,45 +7,83 @@ import { Badge } from '@/shared/components/ui/Badge'
 import { Input } from '@/shared/components/ui/Input'
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '@/shared/components/ui/Table'
 import { mentorPurchasesApi } from '@/modules/mentors/api/mentorPurchases.api'
+import { vipApi } from '@/modules/vip/api/vip.api'
 import { formatCurrencyVnd, formatDate } from '@/shared/lib/format'
-import type { MentorPurchase } from '@/modules/mentor/types'
+
+interface TransactionRow {
+  id: string
+  date: string
+  amount: number
+  searchText: string
+  detail: ReactNode
+}
 
 export function TransactionHistoryPage() {
-  const [purchases, setPurchases] = useState<MentorPurchase[] | null>(null)
+  const [transactions, setTransactions] = useState<TransactionRow[] | null>(null)
   const [query, setQuery] = useState('')
 
   useEffect(() => {
-    void mentorPurchasesApi.listMine().then((items) =>
-      setPurchases([...items].sort((a, b) => new Date(b.purchased_at).getTime() - new Date(a.purchased_at).getTime())),
-    )
+    void Promise.all([mentorPurchasesApi.listMine(), vipApi.listPurchases('candidate')]).then(([mentorPurchases, vipPurchases]) => {
+      const mentorRows: TransactionRow[] = mentorPurchases.map((p) => {
+        const mentorTitle = p.mentor_full_name || p.mentor_job_title || 'Mentor'
+        return {
+          id: `mentor-${p.id}`,
+          date: p.purchased_at,
+          amount: p.price,
+          searchText: `${mentorTitle} ${p.service_name}`.toLowerCase(),
+          detail: (
+            <div>
+              <p className="font-medium text-brand-ink">Gói mentor · {p.service_name}</p>
+              {p.mentor_profile_id ? (
+                <Link to={`/mentor/${p.mentor_profile_id}`} className="text-xs text-brand-blue-600 hover:underline">
+                  {mentorTitle}
+                </Link>
+              ) : (
+                <span className="text-xs text-brand-ink-soft">{mentorTitle}</span>
+              )}
+            </div>
+          ),
+        }
+      })
+      const vipRows: TransactionRow[] = vipPurchases.map((p) => ({
+        id: `vip-${p.id}`,
+        date: p.purchased_at,
+        amount: p.price,
+        searchText: 'skola vip nâng cấp',
+        detail: (
+          <div>
+            <p className="font-medium text-brand-ink">✨ Skola VIP · Sinh viên</p>
+            <p className="text-xs text-brand-ink-soft">Hiệu lực đến {formatDate(p.vip_expires_at)}</p>
+          </div>
+        ),
+      }))
+      setTransactions([...mentorRows, ...vipRows].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()))
+    })
   }, [])
 
-  const filteredPurchases = useMemo(() => {
+  const filteredTransactions = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return purchases ?? []
-    return (purchases ?? []).filter((p) => {
-      const mentorTitle = p.mentor_full_name || p.mentor_job_title || ''
-      return mentorTitle.toLowerCase().includes(q) || p.service_name.toLowerCase().includes(q)
-    })
-  }, [purchases, query])
+    if (!q) return transactions ?? []
+    return (transactions ?? []).filter((t) => t.searchText.includes(q))
+  }, [transactions, query])
 
-  const total = purchases?.reduce((sum, p) => sum + p.price, 0) ?? 0
+  const total = transactions?.reduce((sum, t) => sum + t.amount, 0) ?? 0
 
   return (
     <CandidateLayout>
       <h1 className="mb-1 text-2xl font-bold text-brand-ink">Lịch sử giao dịch</h1>
       <p className="mb-6 text-sm text-brand-ink-soft">
-        Toàn bộ gói dịch vụ mentor bạn đã thanh toán. Hệ thống chưa có cổng thanh toán thật nên mọi giao dịch được ghi nhận "đã thanh toán" ngay khi đặt mua.
+        Toàn bộ gói dịch vụ mentor và gói Skola VIP bạn đã thanh toán. Hệ thống chưa có cổng thanh toán thật nên mọi giao dịch được ghi nhận "đã thanh toán" ngay khi đặt mua.
       </p>
 
-      {purchases === null ? (
+      {transactions === null ? (
         <div className="flex justify-center py-20">
           <Spinner />
         </div>
-      ) : purchases.length === 0 ? (
+      ) : transactions.length === 0 ? (
         <EmptyState
           title="Chưa có giao dịch nào"
-          description="Mua một gói dịch vụ mentor để xem lịch sử giao dịch tại đây."
+          description="Mua một gói dịch vụ mentor hoặc nâng cấp Skola VIP để xem lịch sử giao dịch tại đây."
           action={
             <Link to="/mentor" className="text-sm font-semibold text-brand-blue-600">
               Xem danh sách mentor
@@ -61,49 +99,34 @@ export function TransactionHistoryPage() {
 
           <Input
             className="h-10 max-w-xs"
-            placeholder="Tìm theo mentor, gói dịch vụ..."
+            placeholder="Tìm theo mentor, gói dịch vụ, Skola VIP..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
 
-          {filteredPurchases.length === 0 ? (
+          {filteredTransactions.length === 0 ? (
             <p className="py-8 text-center text-sm text-brand-ink-soft">Không có giao dịch nào khớp với từ khoá tìm kiếm.</p>
           ) : (
             <Table>
               <TableHead>
                 <tr>
                   <TableHeaderCell>Ngày</TableHeaderCell>
-                  <TableHeaderCell>Mentor</TableHeaderCell>
-                  <TableHeaderCell>Gói dịch vụ</TableHeaderCell>
-                  <TableHeaderCell>Số buổi</TableHeaderCell>
+                  <TableHeaderCell>Giao dịch</TableHeaderCell>
                   <TableHeaderCell>Số tiền</TableHeaderCell>
                   <TableHeaderCell>Trạng thái</TableHeaderCell>
                 </tr>
               </TableHead>
               <TableBody>
-                {filteredPurchases.map((p) => {
-                  const mentorTitle = p.mentor_full_name || p.mentor_job_title || 'Mentor'
-                  return (
-                    <TableRow key={p.id}>
-                      <TableCell>{formatDate(p.purchased_at)}</TableCell>
-                      <TableCell>
-                        {p.mentor_profile_id ? (
-                          <Link to={`/mentor/${p.mentor_profile_id}`} className="font-medium text-brand-ink hover:text-brand-blue-600">
-                            {mentorTitle}
-                          </Link>
-                        ) : (
-                          <span className="text-brand-ink">{mentorTitle}</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{p.service_name}</TableCell>
-                      <TableCell>{p.total_sessions}</TableCell>
-                      <TableCell className="font-semibold text-brand-ink">{formatCurrencyVnd(p.price)}</TableCell>
-                      <TableCell>
-                        <Badge tone="green">Đã thanh toán</Badge>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
+                {filteredTransactions.map((t) => (
+                  <TableRow key={t.id}>
+                    <TableCell>{formatDate(t.date)}</TableCell>
+                    <TableCell>{t.detail}</TableCell>
+                    <TableCell className="font-semibold text-brand-ink">{formatCurrencyVnd(t.amount)}</TableCell>
+                    <TableCell>
+                      <Badge tone="green">Đã thanh toán</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           )}

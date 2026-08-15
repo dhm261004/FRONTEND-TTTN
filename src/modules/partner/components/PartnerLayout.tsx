@@ -15,7 +15,7 @@ export function PartnerLayout({ nav, children }: { nav: PartnerNavItem[]; childr
         <SiteHeader
           navItems={[
             { label: 'Thống kê', to: '/doi-tac', active: true },
-            { label: 'Skola Vip', to: '/doi-tac', tone: 'vip' },
+            { label: 'Skola Vip', to: '/skola-vip?tab=partner', tone: 'vip' },
           ]}
           userLabel={user?.email}
           onLogout={logout}

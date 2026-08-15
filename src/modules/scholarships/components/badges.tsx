@@ -69,10 +69,10 @@ export const MATCH_LABELS: Record<MatchLabel, string> = {
   low_fit: 'Ít phù hợp',
 }
 
-export function MatchBadge({ score, label }: { score: number; label: MatchLabel }) {
+export function MatchBadge({ score }: { score: number }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-brand-yellow-300/60 px-2.5 py-1 text-xs font-semibold text-brand-ink">
-      Độ phù hợp: {score}% · {MATCH_LABELS[label]}
+      Độ phù hợp: {score}%
     </span>
   )
 }

@@ -1,33 +1,30 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PublicHeader } from '@/modules/scholarships/components/PublicHeader'
 import { SiteFooter } from '@/shared/components/layout/SiteFooter'
 import { MentorCard } from '@/modules/mentors/components/MentorCard'
+import { ScholarshipMiniCard } from '@/modules/scholarships/components/ScholarshipMiniCard'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import {
   IconArrowRight,
   IconAward,
-  IconCalendarClock,
   IconGraduationCap,
   IconMessageCircle,
   IconSearch,
   IconSparkle,
   IconUsers,
-  IconWallet,
 } from '@/modules/mentor/components/icons'
 import { scholarshipsApi } from '@/modules/scholarships/api/scholarships.api'
-import { scholarshipLocationLabel, scholarshipValueLabel } from '@/modules/scholarships/components/badges'
 import { majorsApi } from '@/modules/scholarships/api/majors.api'
 import { partnersApi } from '@/modules/scholarships/api/partners.api'
 import { interactionsApi } from '@/modules/scholarships/api/interactions.api'
 import { mentorsApi } from '@/modules/mentors/api/mentors.api'
 import { provincesApi, type Province } from '@/shared/api/provinces.api'
-import { formatCurrencyVnd, formatDate } from '@/shared/lib/format'
 import { useAuth } from '@/modules/auth/AuthContext'
 import { useToast } from '@/shared/components/ui/ToastProvider'
 import { ApiError } from '@/shared/api/types'
-import heroMascot from '@/assets/hero-mascot.png'
+import homeBanner from '@/assets/Frame 4895.png'
 import guideMascot from '@/assets/guide-mascot.png'
 import type { Major, PartnerProfile, Scholarship } from '@/modules/scholarships/types'
 import type { MentorProfile } from '@/modules/mentor/types'
@@ -188,97 +185,72 @@ export function HomePage() {
     <div className="flex min-h-svh flex-col bg-slate-50">
       <PublicHeader />
 
-      {/* ================= HERO (Đã fix UI, gọn gàng, hết lỗi đè) ================= */}
-      <section className="relative overflow-hidden bg-linear-to-br from-brand-blue-700 via-brand-blue-600 to-brand-blue-500 pb-20 pt-16 lg:pb-32 lg:pt-24">
-        {/* Hoạ tiết trang trí tự vẽ bằng CSS thay vì tải ảnh noise từ URL ngoài (tránh phụ thuộc mạng
-            ngoài cho một chi tiết thuần trang trí) — vài khối tròn mờ + 1 điểm nhấn màu cocoa ấm. */}
-        <div className="pointer-events-none absolute -left-16 top-0 size-72 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute right-0 top-1/3 size-96 rounded-full bg-brand-cocoa-400/20 blur-3xl" />
-        <div className="pointer-events-none absolute left-1/3 top-10 size-3 rounded-full bg-brand-yellow-300" />
+      {/* ================= HERO — banner Frame 4895 làm ảnh chính thay cho khối gradient + mascot
+          cũ; tiêu đề/mô tả đã in sẵn trong ảnh nên bỏ hẳn khối H1/P coded riêng. Thanh tìm kiếm
+          (không thể "in cứng" vào ảnh vì cần tương tác) xếp đè lên ảnh bằng absolute positioning ở
+          màn hình >=lg, top/left tính theo % của khung ảnh gốc 1440x583 (top 345px, left 70px trong
+          thiết kế gốc) để giữ đúng vị trí khi ảnh co giãn responsive theo chiều rộng. Dưới `lg`, ảnh
+          co lại quá thấp để absolute-overlay còn vừa (top 59% của ảnh cao ~150px trên điện thoại chỉ
+          còn vài chục px, đủ chỗ hiện input nhưng cắt mất hẳn hàng 3 pill bên dưới do section có
+          overflow-hidden) — nên tại đây chuyển hẳn về flow bình thường, xếp ngay dưới ảnh (đè nhẹ lên
+          rìa dưới bằng margin âm) thay vì absolute, để không mất phần tử nào. */}
+      <section className="relative overflow-hidden bg-brand-blue-600">
+        <img
+          src={homeBanner}
+          alt="Skola — Mở lối cơ hội, chạm tới tương lai. Khám phá học bổng phù hợp, kết nối mentor và tiến gần hơn đến mục tiêu học tập của bạn."
+          className="h-auto w-full"
+        />
 
-        <div className="relative mx-auto max-w-7xl px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          
-          {/* Cột trái: Text & Search */}
-          <div className="w-full max-w-xl text-white">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 border border-white/30 px-3.5 py-1.5 text-xs font-semibold backdrop-blur-md">
-              <IconSparkle className="size-3.5 text-brand-yellow-300" />
-              Chấm độ phù hợp học bổng bằng AI
-            </span>
-            <h1 className="mt-6 text-4xl font-black leading-tight sm:text-5xl lg:text-6xl tracking-tight">
-              Mở lối cơ hội, <br />
-              chạm tới <span className="text-brand-yellow-300">tương lai.</span>
-            </h1>
-            <p className="mt-4 text-base text-brand-blue-100/90 leading-relaxed max-w-md">
-              Khám phá học bổng phù hợp, kết nối mentor và tiến gần hơn đến mục tiêu học tập của bạn cùng Skola.
-            </p>
-
-            <form onSubmit={handleHeroSearch} className="mt-10 relative z-20">
-              <div className="flex items-center gap-2 rounded-2xl bg-white p-2 shadow-xl focus-within:ring-4 focus-within:ring-brand-blue-400/30 transition-all">
-                <div className="flex flex-1 items-center px-3">
-                  <IconSearch className="size-5 shrink-0 text-slate-400" />
-                  <input
-                    type="text"
-                    value={heroQ}
-                    onChange={(e) => setHeroQ(e.target.value)}
-                    placeholder="Tìm học bổng, ngành học..."
-                    className="h-10 w-full bg-transparent px-3 text-sm text-brand-ink placeholder:text-slate-400 focus:outline-none"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-brand-blue-600 px-6 text-sm font-bold text-white transition-colors hover:bg-brand-blue-700 shadow-md"
-                >
-                  <span>Tìm kiếm</span>
-                </button>
-              </div>
-
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <HeroPillSelect value={heroMajor} onChange={setHeroMajor} placeholder="Ngành học">
-                  {majors.map((m) => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </HeroPillSelect>
-                <HeroPillSelect value={heroProvince} onChange={setHeroProvince} placeholder="Khu vực">
-                  {provinces.map((p) => (
-                    <option key={p.code} value={p.name}>{p.name}</option>
-                  ))}
-                </HeroPillSelect>
-                <HeroPillSelect value={heroDegree} onChange={setHeroDegree} placeholder="Bậc học">
-                  <option value="undergraduate">Đại học</option>
-                  <option value="postgraduate">Sau đại học</option>
-                  <option value="vocational">Cao đẳng / Nghề</option>
-                  <option value="other">Khác</option>
-                </HeroPillSelect>
-              </div>
-            </form>
-          </div>
-
-          {/* Cột phải: Mascot - không dùng absolute nữa.
-              hero-mascot.png là ảnh banner ngang 1440x583, nhân vật nằm ở khoảng 1/3 bên phải ảnh —
-              object-position phải lệch hẳn về phải (100%) mới thấy được nhân vật, để mặc định (center)
-              sẽ chỉ thấy nền mây/sóng trống. Dùng khung bo góc mềm thay vì hình tròn tuyệt đối vì ảnh
-              ngang cắt vào hình tròn sẽ mất thêm phần đầu/nón của nhân vật ở 4 góc. */}
-          <div className="hidden lg:flex justify-center items-center relative">
-            <div className="relative size-80 xl:size-96 rounded-[2.5rem] bg-brand-blue-500/30 border border-white/20 p-3 shadow-2xl backdrop-blur-sm">
-              <div className="size-full overflow-hidden rounded-4xl">
-                <img
-                  src={heroMascot}
-                  alt="Skola Mascot"
-                  className="w-full h-full object-cover"
-                  style={{ objectPosition: '100% 50%' }}
+        <div className="relative z-20 mx-auto -mt-10 w-[calc(100%-2.5rem)] max-w-md px-0 lg:absolute lg:left-[4.86%] lg:top-[59.17%] lg:mx-0 lg:mt-0 lg:w-[clamp(260px,38%,520px)] lg:max-w-none">
+          <form onSubmit={handleHeroSearch}>
+            <div className="flex items-center gap-2 rounded-2xl bg-white p-2 shadow-xl ring-1 ring-slate-100 focus-within:ring-4 focus-within:ring-brand-blue-400/30 transition-all">
+              <div className="flex flex-1 items-center px-3">
+                <IconSearch className="size-5 shrink-0 text-slate-400" />
+                <input
+                  type="text"
+                  value={heroQ}
+                  onChange={(e) => setHeroQ(e.target.value)}
+                  placeholder="Tìm học bổng, ngành học..."
+                  className="h-10 w-full bg-transparent px-3 text-sm text-brand-ink placeholder:text-slate-400 focus:outline-none"
                 />
               </div>
+              <button
+                type="submit"
+                className="flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-brand-blue-600 px-6 text-sm font-bold text-white transition-colors hover:bg-brand-blue-700 shadow-md"
+              >
+                <span>Tìm kiếm</span>
+              </button>
             </div>
-          </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <HeroPillSelect value={heroMajor} onChange={setHeroMajor} placeholder="Ngành học">
+                {majors.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </HeroPillSelect>
+              <HeroPillSelect value={heroProvince} onChange={setHeroProvince} placeholder="Khu vực">
+                {provinces.map((p) => (
+                  <option key={p.code} value={p.name}>{p.name}</option>
+                ))}
+              </HeroPillSelect>
+              <HeroPillSelect value={heroDegree} onChange={setHeroDegree} placeholder="Bậc học">
+                <option value="undergraduate">Đại học</option>
+                <option value="postgraduate">Sau đại học</option>
+                <option value="vocational">Cao đẳng / Nghề</option>
+                <option value="other">Khác</option>
+              </HeroPillSelect>
+            </div>
+          </form>
         </div>
       </section>
 
-      {/* Stats Box - Chuyển xuống đây, dùng margin âm để đè nửa trên nửa dưới mượt mà */}
-      <div className="max-w-4xl mx-auto px-6 -mt-8 relative z-20 w-full">
-        <div className="flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-slate-100 rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-100">
-          <StatItem icon={<IconGraduationCap className="size-6" />} value={scholarshipCount} suffix="+" label="Học bổng đang mở" />
-          <StatItem icon={<IconAward className="size-6" />} value={majors.length || null} label="Ngành học đa dạng" />
-          <StatItem icon={<IconUsers className="size-6" />} value={mentorCount} suffix="+" label="Mentor đồng hành" />
+      {/* Stats Box - rộng hơn (max-w-6xl thay vì 4xl), thấp hơn (py-4 + layout ngang trong StatItem
+          thay vì xếp dọc) để không chiếm quá nhiều khoảng trống đè lên Hero. */}
+      <div className="relative z-10 mx-auto mt-8 w-full max-w-6xl px-6">
+        <div className="flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-slate-100 rounded-2xl bg-white py-4 px-6 shadow-xl ring-1 ring-slate-100">
+          <StatItem icon={<IconGraduationCap className="size-5" />} value={scholarshipCount} suffix="+" label="Học bổng đang mở" />
+          <StatItem icon={<IconAward className="size-5" />} value={majors.length || null} label="Ngành học đa dạng" />
+          <StatItem icon={<IconUsers className="size-5" />} value={mentorCount} suffix="+" label="Mentor đồng hành" />
         </div>
       </div>
 
@@ -316,29 +288,34 @@ export function HomePage() {
           )}
         </section>
 
-        {/* 3 bước đơn giản - Bỏ blur tròn lộn xộn, đổi thành nền sạch sẽ */}
-        <section className="rounded-[2.5rem] bg-white p-8 sm:p-14 shadow-sm border border-slate-100">
+        {/* 3 bước đơn giản - nền gradient xanh nhạt→trắng (thay cho khối trắng phẳng trước đó) và một
+            đường nối chấm ngang giữa 3 icon để tạo cảm giác "luồng bước", vẫn cùng tông blue-50/slate
+            đang dùng xuyên suốt trang thay vì màu tách biệt. */}
+        <section className="relative overflow-hidden rounded-[2.5rem] border border-slate-100 bg-gradient-to-b from-brand-blue-50/70 to-white p-8 sm:p-14 shadow-sm">
           <SectionHeading eyebrow="Cách Skola hoạt động" title="Chỉ 3 bước để chạm tới học bổng" center />
-          <div className="mt-12 grid grid-cols-1 gap-10 lg:gap-14 sm:grid-cols-3">
-            <StepCard
-              index="01"
-              icon={<IconSearch className="size-6" />}
-              title="Tìm học bổng phù hợp"
-              description="Lọc theo ngành học, khu vực và bậc học chỉ trong vài giây, từ hàng loạt học bổng đang mở."
-            />
-            <StepCard
-              index="02"
-              icon={<IconSparkle className="size-6" />}
-              title="Để AI chấm độ phù hợp"
-              description="Tải CV lên, hệ thống AI phân tích và chấm điểm độ match giữa hồ sơ của bạn với học bổng."
-              accent
-            />
-            <StepCard
-              index="03"
-              icon={<IconMessageCircle className="size-6" />}
-              title="Kết nối mentor"
-              description="Nhận tư vấn 1:1 từ mentor đi trước, hoàn thiện hồ sơ và nộp đơn tự tin hơn."
-            />
+          <div className="relative mt-12">
+            <div className="pointer-events-none absolute inset-x-[16%] top-10 hidden border-t-2 border-dashed border-brand-blue-200 sm:block" />
+            <div className="relative grid grid-cols-1 gap-10 sm:grid-cols-3 lg:gap-14">
+              <StepCard
+                index="01"
+                icon={<IconSearch className="size-6" />}
+                title="Tìm học bổng phù hợp"
+                description="Lọc theo ngành học, khu vực và bậc học chỉ trong vài giây, từ hàng loạt học bổng đang mở."
+              />
+              <StepCard
+                index="02"
+                icon={<IconSparkle className="size-6" />}
+                title="Để AI chấm độ phù hợp"
+                description="Tải CV lên, hệ thống AI phân tích và chấm điểm độ match giữa hồ sơ của bạn với học bổng."
+                accent
+              />
+              <StepCard
+                index="03"
+                icon={<IconMessageCircle className="size-6" />}
+                title="Kết nối mentor"
+                description="Nhận tư vấn 1:1 từ mentor đi trước, hoàn thiện hồ sơ và nộp đơn tự tin hơn."
+              />
+            </div>
           </div>
         </section>
 
@@ -354,20 +331,19 @@ export function HomePage() {
           </section>
         )}
 
-        {/* Lí do nên chọn Skola - Đã fix lại layout Grid tránh méo ảnh.
-            bg-brand-blue-900 trước đó không tồn tại trong theme (chỉ khai báo tới 800) nên class này
-            không render màu gì cả — chữ trắng nằm trên nền trong suốt, gần như vô hình. Đổi sang
-            gradient xanh đậm pha cocoa (đã thêm brand-blue-900 vào theme + phối cùng cocoa cho ấm hơn,
-            đỡ "toàn xanh" một màu). */}
-        <section className="rounded-[2.5rem] bg-linear-to-br from-brand-blue-900 via-brand-blue-800 to-brand-cocoa-700 overflow-hidden shadow-xl">
+        {/* Lí do nên chọn Skola - trước đó là khối gradient xanh đậm/cocoa phủ toàn nền, lạc tông so với
+            phần còn lại của trang (đều nền trắng/sáng, accent màu qua icon chứ không phủ cả khối). Đổi
+            sang nền trắng viền mỏng, accent theo tone (blue/cocoa/yellow) ở icon từng ReasonCard, giữ
+            mascot nhưng đặt trên nền blue-50 nhạt thay vì blue-800 tối. */}
+        <section className="overflow-hidden rounded-[2.5rem] border border-slate-100 bg-white shadow-sm">
           <div className="grid grid-cols-1 lg:grid-cols-2 items-center">
             <div className="p-10 lg:p-16 flex flex-col justify-center">
-              <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold text-brand-yellow-300">
-                <IconSparkle className="size-4" />
+              <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-brand-blue-100 bg-brand-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue-600">
+                <IconSparkle className="size-4 text-brand-yellow-500" />
                 Vì sao chọn Skola
               </span>
-              <h2 className="mt-4 text-3xl font-black text-white sm:text-4xl">Hành trình trọn vẹn,<br/>hỗ trợ tối đa</h2>
-              <p className="mt-4 text-base text-brand-blue-100/80 max-w-md leading-relaxed">
+              <h2 className="mt-4 text-3xl font-black text-brand-ink sm:text-4xl">Hành trình trọn vẹn,<br/>hỗ trợ tối đa</h2>
+              <p className="mt-4 text-base text-slate-500 max-w-md leading-relaxed">
                 Nền tảng duy nhất giúp bạn tìm kiếm học bổng, đo lường năng lực qua AI và kết nối trực tiếp với Mentor giàu kinh nghiệm.
               </p>
 
@@ -376,16 +352,19 @@ export function HomePage() {
                   icon={<TargetIcon />}
                   title="AI Match thông minh"
                   description="Tự động phân tích CV và gợi ý học bổng có tỉ lệ đỗ cao nhất."
+                  tone="blue"
                 />
                 <ReasonCard
                   icon={<ShieldIcon />}
                   title="Thông tin minh bạch"
                   description="Mọi thông tin học bổng đều được xác thực từ chính nhà tài trợ."
+                  tone="cocoa"
                 />
                 <ReasonCard
                   icon={<IconUsers className="size-5" />}
                   title="Mạng lưới Mentor"
                   description="Sửa CV, luyện phỏng vấn 1:1 cùng các anh chị đi trước."
+                  tone="yellow"
                 />
               </div>
 
@@ -398,17 +377,15 @@ export function HomePage() {
               </div>
             </div>
 
-            {/* Ảnh Mascot bên phải - gọn gàng, không tràn/méo.
-                guide-mascot.png là ảnh dọc 352x872: chữ minh hoạ nằm ở khoảng 20% trên cùng, còn nhân
-                vật đứng ở khoảng 55-95% phía dưới. Cột này lại là khung ngang (nửa hàng lưới rộng hơn
-                cao), object-cover sẽ chỉ lộ ra một dải ngang mỏng của ảnh — objectPosition 20% trước đó
-                lấy đúng dải chữ (thừa vì đã có H2/mô tả riêng), không thấy nhân vật đâu cả. Đổi xuống
-                90% để lấy đúng dải chứa nhân vật. */}
-            <div className="hidden lg:block h-full w-full bg-brand-blue-800 relative">
+            {/* Ảnh Mascot bên phải - giữ nguyên vùng cắt ảnh đã canh đúng (object-position 90% để lấy
+                đúng dải chứa nhân vật của ảnh dọc 352x872), chỉ đổi nền phía sau từ blue-800 tối sang
+                blue-50 nhạt cho khớp tông sáng của section, bỏ luôn opacity-90 (không cần làm mờ ảnh
+                trên nền sáng như từng cần trên nền tối). */}
+            <div className="hidden lg:block h-full w-full bg-brand-blue-50 relative min-h-[420px]">
                <img
                   src={guideMascot}
                   alt="Guide Mascot"
-                  className="absolute inset-0 w-full h-full object-cover opacity-90"
+                  className="absolute inset-0 w-full h-full object-cover"
                   style={{ objectPosition: 'center 90%' }}
                 />
             </div>
@@ -427,13 +404,13 @@ function HeroPillSelect({ value, onChange, placeholder, children }: { value: str
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-11 w-full appearance-none rounded-xl border border-white/20 bg-white/10 px-4 text-sm font-medium text-white backdrop-blur-md focus:border-brand-yellow-300 focus:bg-white/20 focus:outline-none transition-all cursor-pointer"
+        className="h-11 w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-brand-ink shadow-sm focus:border-brand-yellow-400 focus:ring-2 focus:ring-brand-yellow-300/50 focus:outline-none transition-all cursor-pointer"
       >
-        <option value="" className="text-slate-800">{placeholder}</option>
+        <option value="">{placeholder}</option>
         {children}
       </select>
       {/* Custom arrow for select */}
-      <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white">
+      <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
       </div>
     </div>
@@ -474,191 +451,110 @@ function StepCard({ index, icon, title, description, accent }: { index: string; 
 }
 
 function PartnerSlideshow({ partners }: { partners: TopPartner[] }) {
-  const scrollerRef = useRef<HTMLDivElement>(null)
-
-  const scrollByCard = (direction: 1 | -1) => {
-    scrollerRef.current?.scrollBy({ left: direction * 260, behavior: 'smooth' })
-  }
+  // Xếp kiểu "toả quạt": đối tác nhiều học bổng nhất (partners[0]) nằm giữa và to nhất, các đối tác
+  // tiếp theo xen dần sang trái/phải theo thứ hạng, càng ra ngoài càng nhỏ dần.
+  const fanned = partners
+    .slice(0, 5)
+    .map((partner, rank) => ({
+      partner,
+      offset: rank === 0 ? 0 : rank % 2 === 1 ? -Math.ceil(rank / 2) : Math.ceil(rank / 2),
+    }))
+    .sort((a, b) => a.offset - b.offset)
 
   return (
     <section>
-      <div className="mb-8 flex items-end justify-between gap-4">
-        <div>
-          <p className="mb-2 text-sm font-bold uppercase tracking-widest text-brand-blue-600">Đối tác nổi bật</p>
-          <h2 className="text-3xl font-black text-brand-ink">Đồng hành cùng các tập đoàn lớn</h2>
-        </div>
-        {partners.length > 1 && (
-          <div className="hidden shrink-0 items-center gap-2 sm:flex">
-            <button
-              type="button"
-              onClick={() => scrollByCard(-1)}
-              aria-label="Xem đối tác trước"
-              className="flex size-10 items-center justify-center rounded-full border border-slate-200 bg-white text-brand-ink shadow-sm transition-colors hover:bg-slate-50"
-            >
-              <IconArrowRight className="size-4 rotate-180" />
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollByCard(1)}
-              aria-label="Xem đối tác tiếp theo"
-              className="flex size-10 items-center justify-center rounded-full border border-slate-200 bg-white text-brand-ink shadow-sm transition-colors hover:bg-slate-50"
-            >
-              <IconArrowRight className="size-4" />
-            </button>
-          </div>
-        )}
-      </div>
+      <SectionHeading eyebrow="Đối tác nổi bật" title="Đồng hành cùng các tập đoàn lớn" />
 
-      <div
-        ref={scrollerRef}
-        className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 scroll-smooth scrollbar-none"
-      >
-        {partners.map((p) => (
-          <Link
-            key={p.id}
-            to={`/nha-tai-tro/${p.id}`}
-            className="group relative h-80 w-56 shrink-0 snap-start overflow-hidden rounded-3xl bg-slate-900 shadow-md transition-transform duration-300 hover:-translate-y-1.5 hover:shadow-xl sm:w-64"
-          >
-            {p.cover_image_url ? (
-              <img
-                src={p.cover_image_url}
-                alt=""
-                className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-            ) : (
-              <div className="flex size-full items-center justify-center bg-linear-to-br from-brand-blue-700 to-brand-cocoa-600 text-5xl font-black text-white/20">
-                {p.company_name.charAt(0)}
-              </div>
-            )}
-            <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/10 to-transparent" />
-
-            <div className="absolute left-4 top-4 flex size-11 items-center justify-center overflow-hidden rounded-xl bg-brand-yellow-400 shadow-md">
-              {p.logo_url ? (
-                <img src={p.logo_url} alt="" className="size-7 object-contain" />
-              ) : (
-                <IconGraduationCap className="size-5 text-brand-ink" />
-              )}
-            </div>
-
-            <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-4 text-white">
-              <div className="min-w-0">
-                <p className="line-clamp-2 text-base font-bold leading-snug">{p.company_name}</p>
-                <p className="mt-1 text-xs text-slate-200">{p.scholarship_count} học bổng</p>
-              </div>
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white text-brand-ink shadow-sm transition-transform group-hover:translate-x-0.5">
-                <IconArrowRight className="size-4" />
-              </span>
-            </div>
-          </Link>
+      <div className="flex items-center gap-4 overflow-x-auto px-4 pb-4 sm:gap-6 sm:overflow-visible sm:px-0 sm:pb-0">
+        {fanned.map(({ partner, offset }) => (
+          <PartnerFanCard key={partner.id} partner={partner} offset={offset} />
         ))}
       </div>
     </section>
   )
 }
 
-function ScholarshipMiniCard({
-  scholarship,
-  partner,
-  saved,
-  onToggleSave,
-}: {
-  scholarship: Scholarship
-  partner?: PartnerBadge
-  saved: boolean
-  onToggleSave: () => void
-}) {
-  const majorTag = scholarship.majors[0]?.name
+function PartnerFanCard({ partner, offset }: { partner: TopPartner; offset: number }) {
+  const dist = Math.abs(offset)
+  // Chỉ dùng ảnh bìa (cover_image_url) làm hình chính, không còn overlay logo góc trên nữa.
+  const sizeClass =
+    dist === 0
+      ? 'z-30 h-96 w-56 sm:w-64'
+      : dist === 1
+        ? 'z-20 mt-8 h-80 w-48 opacity-95 sm:w-56'
+        : 'z-10 mt-16 hidden h-64 w-40 opacity-85 sm:block sm:w-48'
 
   return (
-    <div className="group flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:border-brand-blue-200">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <Link to={`/hoc-bong/${scholarship.id}`} className="flex h-8 max-w-[65%] items-center">
-          {partner?.logo_url ? (
-            <img src={partner.logo_url} alt={partner.company_name} className="h-8 max-w-full object-contain object-left" />
-          ) : (
-            <span className="truncate text-sm font-bold text-brand-blue-600">{partner?.company_name ?? 'Skola'}</span>
-          )}
-        </Link>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault()
-            onToggleSave()
-          }}
-          aria-label={saved ? 'Bỏ lưu học bổng' : 'Lưu học bổng'}
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-brand-blue-500 transition-colors hover:bg-brand-blue-50"
-        >
-          <MiniBookmarkIcon filled={saved} />
-        </button>
-      </div>
-
-      <Link to={`/hoc-bong/${scholarship.id}`} className="mb-3 block">
-        <h3 className="line-clamp-2 min-h-12 text-base font-bold text-brand-ink group-hover:text-brand-blue-600 transition-colors">{scholarship.title}</h3>
-      </Link>
-
-      <div className="mb-4 flex flex-col gap-2 text-sm text-slate-500">
-        <div className="flex items-center gap-2">
-          <IconCalendarClock className="size-4 shrink-0 text-slate-400" />
-          <span className="truncate">{formatDate(scholarship.start_date)} - {formatDate(scholarship.deadline)}</span>
+    <Link
+      to={`/nha-tai-tro/${partner.id}`}
+      className={`group relative shrink-0 overflow-hidden rounded-3xl bg-slate-900 shadow-lg transition-all duration-300 hover:z-40 hover:-translate-y-2 hover:opacity-100 hover:shadow-2xl ${sizeClass}`}
+    >
+      {partner.cover_image_url ? (
+        <img
+          src={partner.cover_image_url}
+          alt=""
+          className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+        />
+      ) : (
+        <div className="flex size-full items-center justify-center bg-linear-to-br from-brand-blue-700 to-brand-cocoa-600 text-5xl font-black text-white/20">
+          {partner.company_name.charAt(0)}
         </div>
-        <div className="flex items-center gap-2 font-bold text-brand-blue-600">
-          <IconWallet className="size-4 shrink-0" />
-          <span>{formatCurrencyVnd(scholarship.total_budget)}</span>
+      )}
+      <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/10 to-transparent" />
+
+      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-4 text-white">
+        <div className="min-w-0">
+          <p className="line-clamp-2 text-base font-bold leading-snug">{partner.company_name}</p>
+          <p className="mt-1 text-xs text-slate-200">{partner.scholarship_count} học bổng</p>
         </div>
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white text-brand-ink opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+          <IconArrowRight className="size-4" />
+        </span>
       </div>
-
-      <div className="mb-5 flex flex-wrap gap-2">
-        {scholarship.value_type && <MiniTag>{scholarshipValueLabel(scholarship)}</MiniTag>}
-        <MiniTag>{scholarshipLocationLabel(scholarship)}</MiniTag>
-        {majorTag && <MiniTag>{majorTag}</MiniTag>}
-      </div>
-
-      <Link to={`/hoc-bong/${scholarship.id}/ung-tuyen`} className="mt-auto block">
-        <Button size="sm" className="w-full">
-          Đăng kí ngay
-        </Button>
-      </Link>
-    </div>
-  )
-}
-
-function MiniBookmarkIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
-      <path d="M6 4h12v17l-6-4-6 4V4Z" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function MiniTag({ children }: { children: ReactNode }) {
-  return (
-    <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
-      {children}
-    </span>
+    </Link>
   )
 }
 
 function StatItem({ icon, value, suffix, label }: { icon: ReactNode; value: number | null; suffix?: string; label: string }) {
   return (
-    <div className="flex flex-1 flex-col items-center p-4 text-center">
-      <div className="mb-2 flex size-12 items-center justify-center rounded-full bg-brand-blue-50 text-brand-blue-600">
+    <div className="flex flex-1 items-center justify-center gap-3 px-4 py-2 text-center sm:justify-start sm:text-left">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-blue-50 text-brand-blue-600">
         {icon}
       </div>
-      <p className="text-2xl font-black text-brand-ink">{value != null ? `${value}${suffix ?? ''}` : '—'}</p>
-      <p className="mt-1 text-sm font-medium text-slate-500">{label}</p>
+      <div>
+        <p className="text-xl font-black leading-tight text-brand-ink">{value != null ? `${value}${suffix ?? ''}` : '—'}</p>
+        <p className="text-xs font-medium text-slate-500">{label}</p>
+      </div>
     </div>
   )
 }
 
-function ReasonCard({ icon, title, description }: { icon: ReactNode; title: string; description: string }) {
+function ReasonCard({
+  icon,
+  title,
+  description,
+  tone,
+}: {
+  icon: ReactNode
+  title: string
+  description: string
+  tone: 'blue' | 'cocoa' | 'yellow'
+}) {
+  const toneClass =
+    tone === 'blue'
+      ? 'bg-brand-blue-50 text-brand-blue-600'
+      : tone === 'cocoa'
+        ? 'bg-brand-cocoa-100 text-brand-cocoa-500'
+        : 'bg-brand-yellow-300/25 text-brand-yellow-500'
+
   return (
-    <div className="flex gap-4 rounded-2xl bg-white/10 p-5 text-white backdrop-blur-md border border-white/10 hover:bg-white/20 transition-colors">
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/20 text-brand-yellow-300">
+    <div className="flex gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+      <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${toneClass}`}>
         {icon}
       </div>
       <div>
-        <p className="text-base font-bold">{title}</p>
-        <p className="mt-1 text-sm text-brand-blue-100 leading-relaxed">{description}</p>
+        <p className="text-base font-bold text-brand-ink">{title}</p>
+        <p className="mt-1 text-sm text-slate-500 leading-relaxed">{description}</p>
       </div>
     </div>
   )

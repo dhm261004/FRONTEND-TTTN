@@ -66,8 +66,8 @@ export function SponsorProfilePage() {
               </div>
               <div className="p-6">
                 <div className="flex flex-wrap items-end gap-4">
-                  <div className="-mt-14 flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border-4 border-white bg-slate-100 shadow">
-                    {partner.logo_url && <img src={partner.logo_url} alt="" className="size-full object-cover" />}
+                  <div className="-mt-14 flex h-20 w-32 shrink-0 items-center justify-center overflow-hidden rounded-xl border-4 border-white bg-white shadow">
+                    {partner.logo_url && <img src={partner.logo_url} alt="" className="size-full object-contain p-2" />}
                   </div>
                   <div>
                     <h1 className="text-xl font-bold text-brand-ink">{partner.company_name}</h1>

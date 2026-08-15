@@ -53,7 +53,8 @@ export function LoginPage() {
 
   return (
     <LoginLayout title="Chào mừng bạn đến với SKOLA" subtitle="Đăng nhập để tiếp tục">
-      <form className="flex flex-col gap-5" onSubmit={handleSubmit(onSubmit)}>
+      {/* Giảm gap giữa các field từ gap-5 xuống gap-3.5 */}
+      <form className="flex flex-col gap-3.5" onSubmit={handleSubmit(onSubmit)}>
         <Field label="Email" required error={errors.email?.message}>
           <Input type="email" placeholder="Nhập email" {...register('email')} error={Boolean(errors.email)} />
         </Field>
@@ -74,15 +75,17 @@ export function LoginPage() {
         </Button>
       </form>
 
-      <div className="my-6 flex items-center gap-3">
+      {/* Giảm margin đường phân cách từ my-6 xuống my-3.5 */}
+      <div className="my-3.5 flex items-center gap-3">
         <div className="h-px flex-1 bg-slate-200" />
-        <span className="text-xs font-medium text-brand-ink-soft">Hoặc</span>
+        <span className="text-xs font-medium text-brand-ink-soft">Hoặc đăng nhập bằng</span>
         <div className="h-px flex-1 bg-slate-200" />
       </div>
 
       <GoogleLoginButton />
 
-      <p className="mt-6 text-center text-sm text-brand-ink-soft">
+      {/* Giảm margin đoạn dưới từ mt-6 xuống mt-3.5 */}
+      <p className="mt-3.5 text-center text-sm text-brand-ink-soft">
         Bạn chưa có tài khoản?{' '}
         <Link to="/dang-ky" className="font-semibold text-brand-blue-600">
           Đăng ký ngay

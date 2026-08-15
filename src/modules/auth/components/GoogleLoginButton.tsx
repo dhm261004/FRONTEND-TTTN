@@ -20,6 +20,9 @@ declare global {
   }
 }
 
+const GOOGLE_LOGO_URL =
+  'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1280px-Google_%22G%22_logo.svg.png'
+
 let scriptLoadPromise: Promise<void> | null = null
 
 function loadGoogleIdentityScript(): Promise<void> {
@@ -68,10 +71,10 @@ export function GoogleLoginButton() {
           },
         })
         window.google.accounts.id.renderButton(containerRef.current, {
+          type: 'icon',
           theme: 'outline',
           size: 'large',
-          width: 336,
-          text: 'continue_with',
+          shape: 'circle',
           locale: 'vi',
         })
       })
@@ -88,7 +91,14 @@ export function GoogleLoginButton() {
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <div ref={containerRef} />
+      <div className="relative h-10 w-10 overflow-hidden rounded-full border border-slate-200 shadow-sm">
+        <img
+          src={GOOGLE_LOGO_URL}
+          alt="Google"
+          className="absolute inset-0 h-full w-full object-contain p-2"
+        />
+        <div ref={containerRef} className="absolute inset-0 opacity-0" />
+      </div>
       {error && <p className="text-sm text-red-500">{error}</p>}
     </div>
   )

@@ -31,6 +31,7 @@ export interface MentorProfile {
   job_title: string | null
   bio: string | null
   avatar_url: string | null
+  vip_expires_at: string | null
   created_at: string
   reviews_count?: number
   average_rating?: number | null

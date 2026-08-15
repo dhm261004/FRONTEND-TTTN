@@ -4,6 +4,7 @@ import { useToast } from '@/shared/components/ui/ToastProvider'
 import { useCandidateProfile } from '@/modules/candidate/CandidateProfileContext'
 import { useAuth } from '@/modules/auth/AuthContext'
 import { CANDIDATE_ACCOUNT_NAV } from '@/modules/candidate/components/nav'
+import { VipBadge, isVipActive } from '@/shared/components/ui/VipBadge'
 
 export function CandidateSidebar() {
   const location = useLocation()
@@ -26,6 +27,11 @@ export function CandidateSidebar() {
           {shortId && `ID ${shortId} | `}
           {user?.email}
         </p>
+        {isVipActive(profile?.vip_expires_at) && (
+          <div className="mt-2 flex justify-center">
+            <VipBadge expiresAt={profile?.vip_expires_at} />
+          </div>
+        )}
       </div>
 
       <nav className="space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">

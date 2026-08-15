@@ -9,6 +9,7 @@ import { Spinner } from '@/shared/components/ui/Spinner'
 import { EmptyState } from '@/shared/components/ui/EmptyState'
 import { scholarshipsApi } from '@/modules/scholarships/api/scholarships.api'
 import { majorsApi } from '@/modules/scholarships/api/majors.api'
+import { partnersApi } from '@/modules/scholarships/api/partners.api'
 import { interactionsApi } from '@/modules/scholarships/api/interactions.api'
 import { recommendationsApi } from '@/modules/scholarships/api/recommendations.api'
 import { useAuth } from '@/modules/auth/AuthContext'
@@ -17,6 +18,11 @@ import { ApiError } from '@/shared/api/types'
 import type { Major, MatchResult, Scholarship } from '@/modules/scholarships/types'
 
 const PAGE_SIZE = 6
+
+interface PartnerBadge {
+  company_name: string
+  logo_url: string | null
+}
 
 export function ScholarshipListPage() {
   const { user } = useAuth()
@@ -42,6 +48,7 @@ export function ScholarshipListPage() {
   const [loading, setLoading] = useState(true)
   const [savedIds, setSavedIds] = useState<Record<string, string>>({})
   const [recommended, setRecommended] = useState<MatchResult[] | null>(null)
+  const [partnersById, setPartnersById] = useState<Record<string, PartnerBadge>>({})
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedFilters(filters), 350)
@@ -94,6 +101,28 @@ export function ScholarshipListPage() {
       .finally(() => setLoading(false))
   }, [debouncedFilters, page])
 
+  // Card học bổng hiện logo đối tác - Scholarship không embed sẵn logo, nên tra cứu riêng theo từng
+  // partner_profile_id xuất hiện trong trang hiện tại (cùng cách HomePage đã làm).
+  useEffect(() => {
+    if (items.length === 0) return
+    const ids = [...new Set(items.map((s) => s.partner_profile_id).filter((id): id is string => Boolean(id)))]
+    const missing = ids.filter((id) => !partnersById[id])
+    if (missing.length === 0) return
+    void Promise.all(
+      missing.map((id) =>
+        partnersApi
+          .getById(id)
+          .then((p): readonly [string, PartnerBadge] => [id, { company_name: p.company_name, logo_url: p.logo_url }])
+          .catch(() => null),
+      ),
+    ).then((results) => {
+      const entries = results.filter((r): r is readonly [string, PartnerBadge] => r !== null)
+      if (entries.length === 0) return
+      setPartnersById((prev) => ({ ...prev, ...Object.fromEntries(entries) }))
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ chạy lại khi items đổi, không phụ thuộc partnersById để tránh vòng lặp fetch
+  }, [items])
+
   const toggleSave = async (scholarshipId: string) => {
     if (!isCandidate) {
       navigate('/dang-nhap', { state: { from: '/hoc-bong' } })
@@ -141,19 +170,21 @@ export function ScholarshipListPage() {
       <PublicHeader active="hoc-bong" />
 
       <div className="mx-auto w-full max-w-[1440px] flex-1 px-6 py-8">
-        <p className="mb-2 text-sm text-brand-ink-soft">
-          <Link to="/hoc-bong">Trang chủ</Link> <span className="mx-1">›</span> Học bổng
-        </p>
-        <h1 className="mb-1 text-2xl font-bold text-brand-ink">Tất cả học bổng</h1>
-        <p className="mb-6 text-sm text-brand-ink-soft">Dựa trên hồ sơ học vấn và các bộ lọc của bạn.</p>
-
-        {/* Sidebar bộ lọc ở bên trái (lg:w-80), Danh sách học bổng xếp dọc/trải ngang bên phải */}
+        {/* Sidebar bộ lọc ở bên trái (lg:w-80), Danh sách học bổng xếp dọc/trải ngang bên phải.
+            Tiêu đề "Tất cả học bổng" chuyển hẳn vào cột giữa (căn cùng danh sách thẻ) thay vì nằm full-width
+            phía trên cả sidebar bộ lọc - trước đây nhìn như tiêu đề của cả trang lẫn sang phần filter. */}
         <div className="flex flex-col gap-6 lg:flex-row">
           <div className="w-full lg:w-80 lg:flex-shrink-0">
             <ScholarshipFilters values={filters} onChange={setFilters} majors={majors} />
           </div>
 
           <div className="min-w-0 flex-1">
+            <p className="mb-2 text-sm text-brand-ink-soft">
+              <Link to="/hoc-bong">Trang chủ</Link> <span className="mx-1">›</span> Học bổng
+            </p>
+            <h1 className="mb-1 text-2xl font-bold text-brand-ink">Tất cả học bổng</h1>
+            <p className="mb-6 text-sm text-brand-ink-soft">Dựa trên hồ sơ học vấn và các bộ lọc của bạn.</p>
+
             {loading ? (
               <div className="flex justify-center py-20">
                 <Spinner />
@@ -168,13 +199,10 @@ export function ScholarshipListPage() {
                     <ScholarshipCard
                       key={s.id}
                       scholarship={s}
+                      partner={s.partner_profile_id ? partnersById[s.partner_profile_id] : undefined}
                       saved={Boolean(savedIds[s.id])}
                       onToggleSave={() => void toggleSave(s.id)}
-                      match={
-                        recommendedById.has(s.id)
-                          ? { score: recommendedById.get(s.id)!.score, label: recommendedById.get(s.id)!.label }
-                          : undefined
-                      }
+                      match={recommendedById.has(s.id) ? { score: recommendedById.get(s.id)!.score } : undefined}
                     />
                   ))}
                 </div>

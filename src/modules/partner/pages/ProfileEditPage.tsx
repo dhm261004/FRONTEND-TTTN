@@ -6,6 +6,7 @@ import { usePartnerProfile } from '@/modules/partner/PartnerProfileContext'
 import { useAuth } from '@/modules/auth/AuthContext'
 import { useToast } from '@/shared/components/ui/ToastProvider'
 import { Spinner } from '@/shared/components/ui/Spinner'
+import { VipBadge, isVipActive } from '@/shared/components/ui/VipBadge'
 import type { UserRole } from '@/modules/auth/types'
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -45,7 +46,10 @@ export function ProfileEditPage() {
       ) : (
         <div className="space-y-6">
           <div>
-            <h1 className="text-lg font-bold text-brand-ink">Hồ sơ công ty</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg font-bold text-brand-ink">Hồ sơ công ty</h1>
+              {isVipActive(profile.vip_expires_at) && <VipBadge expiresAt={profile.vip_expires_at} />}
+            </div>
             <p className="mb-4 text-sm text-brand-ink-soft">
               Tên công ty, logo, ảnh bìa và các thông tin giới thiệu hiển thị công khai ở trang nhà tài trợ.
             </p>

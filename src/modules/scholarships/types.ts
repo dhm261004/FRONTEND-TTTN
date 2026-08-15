@@ -19,6 +19,7 @@ export interface Scholarship {
   value_type: string
   funding_percentage: number | null
   is_no_essay: boolean
+  is_vip_exclusive: boolean
   min_gpa: number | null
   location_province_cities: string[]
   start_date: string | null

@@ -6,7 +6,6 @@ import { SavedScholarshipsPage } from '@/modules/candidate/pages/SavedScholarshi
 import { MentorPurchasesPage } from '@/modules/candidate/pages/MentorPurchasesPage'
 import { MentorSessionsPage } from '@/modules/candidate/pages/MentorSessionsPage'
 import { TransactionHistoryPage } from '@/modules/candidate/pages/TransactionHistoryPage'
-import { UnsupportedFeaturePage } from '@/modules/candidate/components/UnsupportedFeaturePage'
 
 export function CandidateAccountRoutes() {
   return (
@@ -19,33 +18,6 @@ export function CandidateAccountRoutes() {
       <Route path="mentor/goi" element={<MentorPurchasesPage />} />
       <Route path="mentor/lich-hen" element={<MentorSessionsPage />} />
       <Route path="giao-dich" element={<TransactionHistoryPage />} />
-      <Route
-        path="goi-y"
-        element={
-          <UnsupportedFeaturePage
-            title="Cài đặt gợi ý học bổng"
-            description="Backend hiện chưa có bảng lưu tuỳ chọn cấu hình gợi ý học bổng của người dùng."
-          />
-        }
-      />
-      <Route
-        path="thong-bao-hoc-bong"
-        element={
-          <UnsupportedFeaturePage
-            title="Thông báo học bổng"
-            description="Backend hiện chưa có hệ thống thông báo (module notifications còn là stub)."
-          />
-        }
-      />
-      <Route
-        path="thong-bao-email"
-        element={
-          <UnsupportedFeaturePage
-            title="Thông báo qua email"
-            description="Backend hiện chưa có bảng lưu tuỳ chọn thông báo qua email của người dùng."
-          />
-        }
-      />
     </Routes>
   )
 }

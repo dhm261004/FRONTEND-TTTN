@@ -14,7 +14,7 @@ export function MentorLayout({ children }: { children: ReactNode }) {
         <SiteHeader
           navItems={[
             { label: 'Bảng điều khiển', to: '/co-van', active: true },
-            { label: 'Skola Vip', to: '/co-van', tone: 'vip' },
+            { label: 'Skola Vip', to: '/skola-vip?tab=mentor', tone: 'vip' },
           ]}
           userLabel={user?.email}
           onLogout={logout}

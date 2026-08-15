@@ -17,9 +17,9 @@ export function PartnerSidebar({ items }: { items: PartnerNavItem[] }) {
   return (
     <aside className="w-full shrink-0 space-y-4 lg:w-[280px]">
       <div className="rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">
-        <div className="mx-auto mb-3 size-14 overflow-hidden rounded-full bg-slate-200">
+        <div className="mx-auto mb-3 flex h-14 w-20 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white">
           {profile?.logo_url && (
-            <img src={profile.logo_url} alt="" className="size-full object-cover" />
+            <img src={profile.logo_url} alt="" className="size-full object-contain p-1.5" />
           )}
         </div>
         <p className="font-semibold text-brand-ink">{displayName}</p>

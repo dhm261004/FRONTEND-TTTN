@@ -43,6 +43,7 @@ const schema = z
       .optional()
       .refine((v) => !v || (Number(v) >= 0 && Number(v) <= 9.99), 'Từ 0 đến 9.99'),
     is_no_essay: z.boolean(),
+    is_vip_exclusive: z.boolean(),
     start_date: z.string().optional(),
     deadline: z.string().min(1, 'Vui lòng chọn hạn nộp'),
     is_active: z.boolean(),
@@ -109,6 +110,7 @@ export function ScholarshipFormPage() {
       total_budget: '',
       min_gpa: '',
       is_no_essay: false,
+      is_vip_exclusive: false,
       start_date: '',
       deadline: '',
       is_active: true,
@@ -133,6 +135,7 @@ export function ScholarshipFormPage() {
         total_budget: s.total_budget != null ? String(s.total_budget) : '',
         min_gpa: s.min_gpa != null ? String(s.min_gpa) : '',
         is_no_essay: s.is_no_essay,
+        is_vip_exclusive: s.is_vip_exclusive,
         start_date: toDateInputValue(s.start_date),
         deadline: toDateInputValue(s.deadline),
         is_active: s.is_active,
@@ -161,6 +164,7 @@ export function ScholarshipFormPage() {
       total_budget: values.total_budget ? Number(values.total_budget) : null,
       min_gpa: values.min_gpa ? Number(values.min_gpa) : null,
       is_no_essay: values.is_no_essay,
+      is_vip_exclusive: values.is_vip_exclusive,
       start_date: values.start_date ? dateInputToIsoStart(values.start_date) : null,
       deadline: dateInputToIso(values.deadline),
       is_active: values.is_active,
@@ -427,6 +431,10 @@ export function ScholarshipFormPage() {
           <div className="grid gap-5">
             <div className="md:col-span-1">
               <Checkbox label="Không yêu cầu bài luận" {...register('is_no_essay')} />
+            </div>
+            <div className="md:col-span-1">
+              <Checkbox label="Học bổng độc quyền Skola VIP" {...register('is_vip_exclusive')} />
+              <p className="mt-1 text-xs text-brand-ink-soft">Chỉ ứng viên đã nâng cấp Skola VIP mới nộp đơn được — vẫn xem được chi tiết học bổng bình thường.</p>
             </div>
             <Field label="GPA tối thiểu" error={errors.min_gpa?.message} hint="Thang điểm 10, để trống nếu không yêu cầu">
               <Input inputMode="decimal" placeholder="Ví dụ: 3.2" {...register('min_gpa')} error={Boolean(errors.min_gpa)} />

@@ -50,7 +50,6 @@ export function MentorListPage() {
         {/* Lớp trang trí (z-0 để không đè lên chữ) */}
         <div className="pointer-events-none absolute -left-10 top-4 z-0 size-40 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute bottom-0 right-10 z-0 size-52 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute right-1/4 top-10 z-0 size-16 rounded-full border border-white/20" />
 
         {/* Nội dung Hero (z-10 để luôn nằm trên các hình tròn trang trí) */}
         <div className="relative z-10 mx-auto max-w-3xl px-6 text-center text-white">

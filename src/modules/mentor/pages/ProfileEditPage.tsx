@@ -15,6 +15,7 @@ import { StarRating } from '@/modules/mentors/components/StarRating'
 import { useToast } from '@/shared/components/ui/ToastProvider'
 import { ApiError } from '@/shared/api/types'
 import { IconAward, IconCheckCircle, IconGraduationCap, IconPencil, IconPlusCircle, IconX } from '@/modules/mentor/components/icons'
+import { VipBadge, isVipActive } from '@/shared/components/ui/VipBadge'
 import type { MentorAchievement, MentorCertificate } from '@/modules/mentor/types'
 
 const schema = z.object({
@@ -97,7 +98,10 @@ export function ProfileEditPage() {
           <div className="flex flex-wrap items-start gap-5">
             <AvatarUpload url={profile.avatar_url} onUpload={handleUploadAvatar} alt="Ảnh đại diện" label="Đổi ảnh đại diện" />
             <div className="min-w-0 flex-1">
-              <h2 className="text-xl font-bold text-brand-ink">{title}</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-bold text-brand-ink">{title}</h2>
+                {isVipActive(profile.vip_expires_at) && <VipBadge expiresAt={profile.vip_expires_at} />}
+              </div>
               {subtitle && (
                 <p className="mt-0.5 flex items-center gap-1.5 text-sm text-brand-ink-soft">
                   <IconGraduationCap className="size-4 shrink-0 text-brand-blue-500" />

@@ -1,15 +1,21 @@
 import { useRef, useState, type ChangeEvent } from 'react'
+import { cn } from '@/shared/lib/cn'
 
 export function AvatarUpload({
   url,
   onUpload,
   alt = 'Ảnh đại diện',
   label = 'Đổi ảnh',
+  shape = 'circle',
 }: {
   url: string | null | undefined
   onUpload: (file: File) => Promise<void>
   alt?: string
   label?: string
+  /** 'circle' cho ảnh đại diện cá nhân (sinh viên/mentor); 'rectangle' cho logo thương hiệu (đối tác)
+   * — khối hình chữ nhật nằm ngang (không phải vuông) bo góc, giữ đúng tỉ lệ logo thay vì cắt tròn
+   * dễ mất góc/chữ. */
+  shape?: 'circle' | 'rectangle'
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -27,9 +33,14 @@ export function AvatarUpload({
   }
 
   return (
-    <div className="relative mx-auto size-32 md:mx-0">
-      <div className="size-32 overflow-hidden rounded-full bg-slate-200">
-        {url && <img src={url} alt={alt} className="size-full object-cover" />}
+    <div className={cn('relative mx-auto md:mx-0', shape === 'circle' ? 'size-32' : 'h-24 w-40')}>
+      <div
+        className={cn(
+          'size-full overflow-hidden border border-slate-200 bg-slate-200',
+          shape === 'circle' ? 'rounded-full' : 'rounded-2xl',
+        )}
+      >
+        {url && <img src={url} alt={alt} className={cn('size-full', shape === 'circle' ? 'object-cover' : 'object-contain bg-white p-3')} />}
       </div>
       <button
         type="button"

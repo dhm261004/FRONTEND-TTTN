@@ -15,6 +15,7 @@ export interface PartnerProfile {
   linkedin_url: string | null
   facebook_url: string | null
   approval_status: ApprovalStatus
+  vip_expires_at: string | null
 }
 
 export interface Major {
@@ -38,6 +39,7 @@ export interface Scholarship {
   value_type: string
   funding_percentage: number | null
   is_no_essay: boolean
+  is_vip_exclusive: boolean
   min_gpa: number | null
   location_province_cities: string[]
   start_date: string | null
@@ -144,6 +146,7 @@ export interface ScholarshipPayload {
   value_type: string
   funding_percentage?: number | null
   is_no_essay?: boolean
+  is_vip_exclusive?: boolean
   min_gpa?: number | null
   location_province_cities?: string[]
   start_date?: string | null

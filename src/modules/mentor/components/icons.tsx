@@ -25,6 +25,13 @@ export const IconWallet = (p: SVGProps<SVGSVGElement>) => (
   </Icon>
 )
 
+export const IconCreditCard = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <rect x="3" y="6" width="18" height="12" rx="2" />
+    <path d="M3 10h18" strokeLinecap="round" />
+  </Icon>
+)
+
 export const IconBriefcase = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}>
     <rect x="3" y="7" width="18" height="13" rx="2" />

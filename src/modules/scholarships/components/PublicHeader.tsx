@@ -3,7 +3,7 @@ import { SiteHeader } from '@/shared/components/layout/SiteHeader'
 import { Button } from '@/shared/components/ui/Button'
 import { useAuth } from '@/modules/auth/AuthContext'
 
-export function PublicHeader({ active }: { active?: 'hoc-bong' | 'mentor' }) {
+export function PublicHeader({ active }: { active?: 'hoc-bong' | 'mentor' | 'skola-vip' }) {
   const { isAuthenticated, user, logout } = useAuth()
 
   return (
@@ -11,7 +11,7 @@ export function PublicHeader({ active }: { active?: 'hoc-bong' | 'mentor' }) {
       navItems={[
         { label: 'Học bổng', to: '/hoc-bong', active: active === 'hoc-bong' },
         { label: 'Mentor', to: '/mentor', active: active === 'mentor' },
-        { label: 'Skola Vip', to: '/hoc-bong', tone: 'vip' },
+        { label: 'Skola Vip', to: '/skola-vip', active: active === 'skola-vip', tone: 'vip' },
       ]}
       userLabel={user?.email}
       onLogout={isAuthenticated ? () => void logout() : undefined}

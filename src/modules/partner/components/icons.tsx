@@ -102,6 +102,12 @@ export const IconSearch = (p: SVGProps<SVGSVGElement>) => (
   </Icon>
 )
 
+export const IconCrown = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M3 8l4 3 5-6 5 6 4-3-2 10H5L3 8Z" strokeLinejoin="round" />
+  </Icon>
+)
+
 export const IconDownload = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}>
     <path d="M12 4v11m0 0 4-4m-4 4-4-4" strokeLinecap="round" strokeLinejoin="round" />

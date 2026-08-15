@@ -15,6 +15,7 @@ import { ScholarshipFormPage } from '@/modules/partner/pages/ScholarshipFormPage
 import { CandidatesPage } from '@/modules/partner/pages/CandidatesPage'
 import { ProfileEditPage } from '@/modules/partner/pages/ProfileEditPage'
 import { SecurityPage as PartnerSecurityPage } from '@/modules/partner/pages/SecurityPage'
+import { TransactionHistoryPage as PartnerTransactionHistoryPage } from '@/modules/partner/pages/TransactionHistoryPage'
 import { CreatePartnerProfilePage } from '@/modules/partner/pages/CreatePartnerProfilePage'
 import { UnsupportedFeaturePage } from '@/modules/partner/pages/UnsupportedFeaturePage'
 import { MANAGEMENT_NAV } from '@/modules/partner/components/nav'
@@ -27,6 +28,7 @@ import { ServicesPage as MentorServicesPage } from '@/modules/mentor/pages/Servi
 import { ServiceFormPage as MentorServiceFormPage } from '@/modules/mentor/pages/ServiceFormPage'
 import { IncomePage as MentorIncomePage } from '@/modules/mentor/pages/IncomePage'
 import { ReviewsPage as MentorReviewsPage } from '@/modules/mentor/pages/ReviewsPage'
+import { TransactionHistoryPage as MentorTransactionHistoryPage } from '@/modules/mentor/pages/TransactionHistoryPage'
 import { SchedulePage as MentorSchedulePage } from '@/modules/mentor/pages/SchedulePage'
 import { StudentsPage as MentorStudentsPage } from '@/modules/mentor/pages/StudentsPage'
 import { StudentProfilePage as MentorStudentProfilePage } from '@/modules/mentor/pages/StudentProfilePage'
@@ -38,6 +40,8 @@ import { MentorListPage } from '@/modules/mentors/pages/MentorListPage'
 import { MentorDetailPage } from '@/modules/mentors/pages/MentorDetailPage'
 import { MentorServiceCheckoutPage } from '@/modules/mentors/pages/MentorServiceCheckoutPage'
 import { HomePage } from '@/modules/home/pages/HomePage'
+import { VipLandingPage } from '@/modules/vip/pages/VipLandingPage'
+import { VipCheckoutPage } from '@/modules/vip/pages/VipCheckoutPage'
 import { CartPage } from '@/modules/mentors/cart/CartPage'
 import { CartProvider } from '@/modules/mentors/cart/CartContext'
 import { ToastProvider } from '@/shared/components/ui/ToastProvider'
@@ -93,6 +97,15 @@ function AppRoutes() {
         }
       />
       <Route path="/nha-tai-tro/:id" element={<SponsorProfilePage />} />
+      <Route path="/skola-vip" element={<VipLandingPage />} />
+      <Route
+        path="/skola-vip/thanh-toan/:subject"
+        element={
+          <ProtectedRoute>
+            <VipCheckoutPage />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/mentor" element={<MentorListPage />} />
       <Route path="/mentor/:id" element={<MentorDetailPage />} />
       <Route
@@ -142,6 +155,7 @@ function AppRoutes() {
 
         <Route path="/doi-tac/ho-so" element={<ProfileEditPage />} />
         <Route path="/doi-tac/ho-so/sua" element={<Navigate to="/doi-tac/ho-so" replace />} />
+        <Route path="/doi-tac/giao-dich" element={<PartnerTransactionHistoryPage />} />
         <Route path="/doi-tac/bao-mat" element={<PartnerSecurityPage />} />
       </Route>
 
@@ -157,6 +171,7 @@ function AppRoutes() {
         <Route path="/co-van/sinh-vien" element={<MentorStudentsPage />} />
         <Route path="/co-van/sinh-vien/:candidateProfileId" element={<MentorStudentProfilePage />} />
         <Route path="/co-van/ho-so" element={<MentorProfileEditPage />} />
+        <Route path="/co-van/giao-dich" element={<MentorTransactionHistoryPage />} />
         <Route path="/co-van/danh-gia" element={<MentorReviewsPage />} />
         <Route path="/co-van/lich" element={<MentorSchedulePage />} />
       </Route>

@@ -15,6 +15,7 @@ export interface CandidateProfile {
   impact_leadership_score: number | null
   impact_leadership_reason: string | null
   cv_analyzed_at: string | null
+  vip_expires_at: string | null
   updated_at: string
 }
 

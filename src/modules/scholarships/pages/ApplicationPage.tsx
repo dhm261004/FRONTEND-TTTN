@@ -12,6 +12,7 @@ import { applicationsApi } from '@/modules/scholarships/api/applications.api'
 import { candidateProfileApi } from '@/modules/candidate/api/candidateProfile.api'
 import { useToast } from '@/shared/components/ui/ToastProvider'
 import { ApiError } from '@/shared/api/types'
+import { isVipActive } from '@/shared/components/ui/VipBadge'
 import type { Application, Scholarship } from '@/modules/scholarships/types'
 import type { CandidateCertificate, CandidateProfile } from '@/modules/candidate/types'
 
@@ -139,6 +140,9 @@ export function ApplicationPage() {
   const checklist = buildChecklist(scholarship, profile)
   const deadlinePassed = new Date(scholarship.deadline).getTime() <= Date.now()
   const editable = existing ? existing.status === 'pending' && !deadlinePassed : true
+  // Học bổng độc quyền Skola VIP — chỉ chặn khi tạo đơn MỚI (existing null); đơn đã tồn tại (nộp từ
+  // trước, hoặc lúc còn VIP) vẫn quản lý/xem được bình thường.
+  const isLockedForNewApplication = !existing && scholarship.is_vip_exclusive && !isVipActive(profile?.vip_expires_at)
 
   return (
     <div className="flex min-h-svh flex-col bg-app-bg">
@@ -206,6 +210,18 @@ export function ApplicationPage() {
                   </Button>
                 </div>
               )}
+            </div>
+          ) : isLockedForNewApplication ? (
+            <div className="mt-6 space-y-4">
+              <div className="rounded-xl border border-brand-yellow-300 bg-brand-yellow-400/10 p-4 text-sm text-brand-ink">
+                <p className="font-bold">✨ Học bổng độc quyền Skola VIP</p>
+                <p className="mt-1 text-brand-ink-soft">
+                  Chỉ tài khoản đã nâng cấp Skola VIP mới nộp đơn được cho học bổng này.
+                </p>
+              </div>
+              <Link to="/skola-vip?tab=candidate">
+                <Button variant="yellow" className="w-full">Nâng cấp Skola VIP</Button>
+              </Link>
             </div>
           ) : (
             <div className="mt-6 space-y-6">

@@ -1,14 +1,12 @@
 import type { ComponentType, SVGProps } from 'react'
 import {
+  IconAward,
   IconBookmark,
   IconCalendar,
   IconCreditCard,
   IconFolder,
   IconGraduationCap,
-  IconLightbulb,
   IconLock,
-  IconMail,
-  IconMegaphone,
   IconPackage,
 } from '@/modules/candidate/components/icons'
 
@@ -21,13 +19,11 @@ export interface CandidateNavItem {
 
 export const CANDIDATE_ACCOUNT_NAV: CandidateNavItem[] = [
   { label: 'Hồ sơ của tôi', to: '/tai-khoan/ho-so', icon: IconFolder, supported: true },
+  { label: 'Skola Vip', to: '/skola-vip?tab=candidate', icon: IconAward, supported: true },
   { label: 'Mật khẩu và bảo mật', to: '/tai-khoan/bao-mat', icon: IconLock, supported: true },
   { label: 'Lịch sử giao dịch', to: '/tai-khoan/giao-dich', icon: IconCreditCard, supported: true },
   { label: 'Học bổng đã ứng tuyển', to: '/tai-khoan/ung-tuyen', icon: IconGraduationCap, supported: true },
   { label: 'Học bổng đã lưu', to: '/tai-khoan/da-luu', icon: IconBookmark, supported: true },
   { label: 'Gói mentor đã mua', to: '/tai-khoan/mentor/goi', icon: IconPackage, supported: true },
   { label: 'Lịch hẹn mentor', to: '/tai-khoan/mentor/lich-hen', icon: IconCalendar, supported: true },
-  { label: 'Cài đặt gợi ý học bổng', to: '/tai-khoan/goi-y', icon: IconLightbulb, supported: false },
-  { label: 'Thông báo học bổng', to: '/tai-khoan/thong-bao-hoc-bong', icon: IconMegaphone, supported: false },
-  { label: 'Thông báo qua email', to: '/tai-khoan/thong-bao-email', icon: IconMail, supported: false },
 ]

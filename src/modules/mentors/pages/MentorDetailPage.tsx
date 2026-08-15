@@ -11,15 +11,9 @@ import { useToast } from '@/shared/components/ui/ToastProvider'
 import { mentorsApi } from '@/modules/mentors/api/mentors.api'
 import { useCart } from '@/modules/mentors/cart/CartContext'
 import { formatCurrencyVnd, formatDate } from '@/shared/lib/format'
-import {
-  IconAward,
-  IconCheckCircle,
-  IconGraduationCap,
-  IconMessageCircle,
-  IconQuote,
-  IconSparkle,
-  IconStar,
-} from '@/modules/mentor/components/icons'
+import { IconAward, IconCheckCircle, IconGraduationCap, IconQuote } from '@/modules/mentor/components/icons'
+import { VipBadge, isVipActive } from '@/shared/components/ui/VipBadge'
+import guideMascot from '@/assets/guide-mascot.png'
 import type { MentorProfileDetailed, MentorReviewWithCandidate, MentorService } from '@/modules/mentor/types'
 
 export function MentorDetailPage() {
@@ -114,16 +108,8 @@ export function MentorDetailPage() {
     <div className="flex min-h-svh flex-col bg-app-bg">
       <PublicHeader active="mentor" />
 
-      {/* Cover — hồ sơ mentor không có ảnh bìa riêng trong dữ liệu, nên dùng dải gradient trang trí
-          (đồng bộ tông với hero trang chủ/danh sách mentor) thay vì ảnh thật. */}
-      <section className="relative h-40 overflow-hidden bg-linear-to-br from-brand-blue-600 via-brand-blue-500 to-brand-cocoa-500 sm:h-48">
-        <div className="pointer-events-none absolute -left-8 top-6 size-32 rounded-full bg-white/10 blur-2xl" />
-        <div className="pointer-events-none absolute right-0 bottom-0 size-44 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-app-bg to-transparent" />
-      </section>
-
       <div className="mx-auto w-full max-w-[1440px] flex-1 px-6 pb-8">
-        <p className="mt-4 mb-4 text-sm text-brand-ink-soft">
+        <p className="mt-6 mb-4 text-sm text-brand-ink-soft">
           <Link to="/" className="hover:underline">
             Trang chủ
           </Link>{' '}
@@ -134,9 +120,7 @@ export function MentorDetailPage() {
         <div className="flex flex-col gap-6 lg:flex-row">
           <div className="min-w-0 flex-1 space-y-6">
             <div className="flex flex-wrap items-end gap-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              {/* Chỉ avatar trồi lên phủ lên cover (margin âm riêng trên chính nó) — tên/thông tin bên
-                  cạnh vẫn nằm trọn trong card trắng, tránh chữ đè lên nền cover đặc màu phía trên. */}
-              <div className="-mt-20 size-24 shrink-0 overflow-hidden rounded-2xl border-4 border-white bg-slate-200 shadow-lg sm:-mt-24 sm:size-28">
+              <div className="size-24 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-200 shadow-sm sm:size-28">
                 {mentor.avatar_url ? (
                   <img src={mentor.avatar_url} alt="" className="size-full object-cover" />
                 ) : (
@@ -146,10 +130,13 @@ export function MentorDetailPage() {
                 )}
               </div>
               <div className="min-w-0 flex-1 pb-1">
-                <h1 className="text-xl font-black text-brand-ink sm:text-2xl">{title}</h1>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-black text-brand-ink sm:text-3xl">{title}</h1>
+                  {isVipActive(mentor.vip_expires_at) && <VipBadge />}
+                </div>
                 {subtitle && (
-                  <p className="mt-0.5 flex items-center gap-1.5 text-sm text-brand-ink-soft">
-                    <IconGraduationCap className="size-4 shrink-0 text-brand-blue-500" />
+                  <p className="mt-1 flex items-center gap-1.5 text-base text-brand-ink-soft sm:text-lg">
+                    <IconGraduationCap className="size-5 shrink-0 text-brand-blue-500" />
                     {subtitle}
                   </p>
                 )}
@@ -163,11 +150,6 @@ export function MentorDetailPage() {
                   <span className="text-brand-ink-soft">{mentor.reviews_count ?? 0} đánh giá</span>
                 </div>
               </div>
-              {activeServices.length > 0 && (
-                <a href="#dich-vu" className="ml-auto hidden pb-1 sm:block">
-                  <Button icon={<IconMessageCircle className="size-4" />}>Đặt lịch tư vấn</Button>
-                </a>
-              )}
             </div>
 
             {mentor.bio && (
@@ -285,44 +267,11 @@ export function MentorDetailPage() {
             </div>
           </div>
 
-          <aside className="w-full shrink-0 space-y-4 lg:sticky lg:top-6 lg:h-fit lg:w-[280px]">
-            <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-brand-blue-600 to-brand-cocoa-500 p-5 text-white shadow-lg">
-              <div className="pointer-events-none absolute -right-6 -top-6 size-24 rounded-full bg-white/10" />
-              <h2 className="flex items-center gap-1.5 text-xs font-semibold tracking-wide text-white/80 uppercase">
-                <IconSparkle className="size-3.5" /> Sẵn sàng hỗ trợ
-              </h2>
-              <p className="mt-1 text-lg font-bold">Kết nối với {mentor.full_name?.split(' ').pop() || 'mentor'}</p>
-              <dl className="mt-4 space-y-2.5 text-sm">
-                <div className="flex items-center justify-between">
-                  <dt className="text-white/80">Đánh giá trung bình</dt>
-                  <dd className="flex items-center gap-1 font-semibold">
-                    <IconStar className="size-3.5 fill-current text-brand-yellow-300" />
-                    {mentor.average_rating != null ? mentor.average_rating.toFixed(1) : 'Chưa có'}
-                  </dd>
-                </div>
-                <div className="flex items-center justify-between">
-                  <dt className="text-white/80">Số lượt đánh giá</dt>
-                  <dd className="font-semibold">{mentor.reviews_count ?? 0}</dd>
-                </div>
-                <div className="flex items-center justify-between">
-                  <dt className="text-white/80">Gói dịch vụ đang mở</dt>
-                  <dd className="font-semibold">{activeServices.length}</dd>
-                </div>
-                {lowestPrice != null && (
-                  <div className="flex items-center justify-between">
-                    <dt className="text-white/80">Giá từ</dt>
-                    <dd className="font-semibold">{formatCurrencyVnd(lowestPrice)}</dd>
-                  </div>
-                )}
-              </dl>
-              {activeServices.length > 0 && (
-                <a href="#dich-vu">
-                  <Button variant="yellow" className="mt-5 w-full">
-                    Xem gói dịch vụ
-                  </Button>
-                </a>
-              )}
-            </div>
+          <aside className="w-full shrink-0 lg:sticky lg:top-6 lg:h-fit lg:w-[280px]">
+            {/* Bỏ hẳn card/gradient - bên phải chỉ còn đúng ảnh guide-mascot, không viền/nền/nội dung
+                nào khác. Không ép aspect ratio/object-cover nữa - hiện trọn ảnh theo đúng tỉ lệ gốc,
+                không crop. */}
+            <img src={guideMascot} alt="" className="w-full rounded-3xl" />
           </aside>
         </div>
       </div>

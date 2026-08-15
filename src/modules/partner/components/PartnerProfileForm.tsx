@@ -117,10 +117,10 @@ export function PartnerProfileForm({
 
         <div className="flex items-center gap-4">
           {onLogoSelected ? (
-            <AvatarUpload url={logoUrl} onUpload={onLogoSelected} alt="Logo" label="Đổi logo" />
+            <AvatarUpload url={logoUrl} onUpload={onLogoSelected} alt="Logo" label="Đổi logo" shape="rectangle" />
           ) : (
-            <div className="size-20 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
-              {logoUrl && <img src={logoUrl} alt="Logo" className="size-full object-cover" />}
+            <div className="flex h-20 w-32 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white">
+              {logoUrl && <img src={logoUrl} alt="Logo" className="size-full object-contain p-2" />}
             </div>
           )}
           <div>

@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { PublicHeader } from '@/modules/scholarships/components/PublicHeader'
 import { SiteFooter } from '@/shared/components/layout/SiteFooter'
-import { ScholarshipCard } from '@/modules/scholarships/components/ScholarshipCard'
+import { ScholarshipMiniCard } from '@/modules/scholarships/components/ScholarshipMiniCard'
 import { Button } from '@/shared/components/ui/Button'
 import { Spinner } from '@/shared/components/ui/Spinner'
 import { Modal } from '@/shared/components/ui/Modal'
@@ -16,6 +16,7 @@ import { CRITERION_LABELS, MATCH_LABELS, scholarshipLocationLabel } from '@/modu
 import { useAuth } from '@/modules/auth/AuthContext'
 import { useToast } from '@/shared/components/ui/ToastProvider'
 import { ApiError } from '@/shared/api/types'
+import { vipApi } from '@/modules/vip/api/vip.api'
 import {
   IconAward,
   IconCalendarClock,
@@ -41,8 +42,9 @@ export function ScholarshipDetailPage() {
   const [match, setMatch] = useState<MatchResult | null>(null)
   const [matchLoading, setMatchLoading] = useState(false)
   const [matchModalOpen, setMatchModalOpen] = useState(false)
-  const [savedInteractionId, setSavedInteractionId] = useState<string | null>(null)
+  const [savedIds, setSavedIds] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
+  const [candidateIsVip, setCandidateIsVip] = useState<boolean | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -67,7 +69,7 @@ export function ScholarshipDetailPage() {
   useEffect(() => {
     if (!id || !isCandidate) {
       setMatch(null)
-      setSavedInteractionId(null)
+      setSavedIds({})
       return
     }
     // Gọi tuần tự: cả hai endpoint đều tự tạo CandidateProfile nếu ứng viên chưa có (lazy upsert ở
@@ -79,35 +81,57 @@ export function ScholarshipDetailPage() {
       .catch(() => setMatch(null))
       .finally(() => setMatchLoading(false))
       .then(() => interactionsApi.listMine('saved'))
-      .then((list) => setSavedInteractionId(list.find((i) => i.scholarship_id === id)?.id ?? null))
-      .catch(() => setSavedInteractionId(null))
+      .then((list) => setSavedIds(Object.fromEntries(list.map((i) => [i.scholarship_id, i.id]))))
+      .catch(() => setSavedIds({}))
   }, [id, isCandidate])
 
-  const toggleSave = async () => {
-    if (!id) return
-    if (!isCandidate) {
-      navigate('/dang-nhap', { state: { from: `/hoc-bong/${id}` } })
+  // Chỉ gọi khi thật sự cần biết trạng thái VIP — học bổng độc quyền chặn nộp đơn với ứng viên chưa
+  // nâng cấp, nên chỉ ứng viên xem học bổng is_vip_exclusive mới cần API này.
+  useEffect(() => {
+    if (!isCandidate || !scholarship?.is_vip_exclusive) {
+      setCandidateIsVip(null)
       return
     }
-    if (savedInteractionId) {
-      const prevId = savedInteractionId
-      setSavedInteractionId(null)
+    void vipApi
+      .getStatus()
+      .then((status) => setCandidateIsVip(status.candidate?.is_vip ?? false))
+      .catch(() => setCandidateIsVip(false))
+  }, [isCandidate, scholarship?.is_vip_exclusive])
+
+  // Dùng chung cho cả cờ lưu của học bổng đang xem lẫn từng thẻ "Học bổng liên quan" bên dưới.
+  const toggleSave = async (scholarshipId: string) => {
+    if (!isCandidate) {
+      navigate('/dang-nhap', { state: { from: `/hoc-bong/${scholarshipId}` } })
+      return
+    }
+    const existingId = savedIds[scholarshipId]
+    if (existingId) {
+      setSavedIds((prev) => {
+        const next = { ...prev }
+        delete next[scholarshipId]
+        return next
+      })
       notify('Đã bỏ lưu học bổng.')
       try {
-        await interactionsApi.remove(prevId)
+        await interactionsApi.remove(existingId)
       } catch (err) {
-        setSavedInteractionId(prevId)
+        setSavedIds((prev) => ({ ...prev, [scholarshipId]: existingId }))
         notify(err instanceof ApiError ? err.message : 'Không thể lưu học bổng. Vui lòng thử lại.', 'error')
       }
     } else {
-      const placeholderId = `pending-${id}`
-      setSavedInteractionId(placeholderId)
+      const placeholderId = `pending-${scholarshipId}`
+      setSavedIds((prev) => ({ ...prev, [scholarshipId]: placeholderId }))
       notify('Đã lưu học bổng.')
       try {
-        const interaction = await interactionsApi.create(id, 'saved')
-        setSavedInteractionId((curr) => (curr === placeholderId ? interaction.id : curr))
+        const interaction = await interactionsApi.create(scholarshipId, 'saved')
+        setSavedIds((prev) => (prev[scholarshipId] === placeholderId ? { ...prev, [scholarshipId]: interaction.id } : prev))
       } catch (err) {
-        setSavedInteractionId((curr) => (curr === placeholderId ? null : curr))
+        setSavedIds((prev) => {
+          if (prev[scholarshipId] !== placeholderId) return prev
+          const next = { ...prev }
+          delete next[scholarshipId]
+          return next
+        })
         notify(err instanceof ApiError ? err.message : 'Không thể lưu học bổng. Vui lòng thử lại.', 'error')
       }
     }
@@ -131,6 +155,11 @@ export function ScholarshipDetailPage() {
     )
   }
 
+  // Học bổng độc quyền Skola VIP — chỉ khoá khi đã xác nhận ứng viên KHÔNG phải VIP (candidateIsVip
+  // === false), không khoá khi còn đang tải (null) để tránh nháy nút "Ứng tuyển ngay" rồi đổi ngay
+  // sau đó.
+  const isLockedForCandidate = scholarship.is_vip_exclusive && isCandidate && candidateIsVip === false
+
   return (
     <div className="flex min-h-svh flex-col bg-app-bg">
       <PublicHeader active="hoc-bong" />
@@ -143,32 +172,33 @@ export function ScholarshipDetailPage() {
 
         <div className="flex flex-col gap-6 lg:flex-row">
           <div className="min-w-0 flex-1 space-y-6">
-            {/* Ảnh đại diện học bổng nằm ngay trong box giới thiệu (không phải banner rời bên ngoài) —
-                logo đối tác (nếu có) nổi lên góc dưới trái ảnh, cùng kiểu overlap đã dùng ở trang mentor. */}
+            {/* Ảnh bìa của đối tác làm banner đầu trang, logo đè lên góc trái dưới ảnh bìa — cùng pattern
+                đã dùng ở SponsorProfilePage.tsx để trang chi tiết học bổng và trang nhà tài trợ đồng bộ
+                giao diện thay vì mỗi nơi một kiểu. */}
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-              <div className="relative h-48 bg-slate-100 sm:h-64">
-                {scholarship.image_url ? (
-                  <img src={scholarship.image_url} alt="" className="size-full object-cover" />
-                ) : (
-                  <div className="flex size-full items-center justify-center bg-linear-to-br from-brand-blue-500 via-brand-blue-400 to-brand-cocoa-500">
-                    <IconGraduationCap className="size-14 text-white/80" />
-                  </div>
-                )}
-                {partner?.logo_url && (
-                  <div className="absolute bottom-4 left-5 size-16 overflow-hidden rounded-2xl border-4 border-white bg-white shadow-lg">
-                    <img src={partner.logo_url} alt="" className="size-full object-contain" />
-                  </div>
-                )}
+              <div className="flex h-32 items-center justify-center overflow-hidden bg-gradient-to-br from-brand-blue-400 to-brand-blue-600 sm:h-40">
+                {partner?.cover_image_url && <img src={partner.cover_image_url} alt="" className="size-full object-cover" />}
               </div>
-
               <div className="p-6">
-                <h1 className="text-xl font-black text-brand-ink sm:text-2xl">{scholarship.title}</h1>
-                {partner && (
-                  <Link to={`/nha-tai-tro/${partner.id}`} className="text-sm font-medium text-brand-blue-600 hover:underline">
-                    {partner.company_name}
-                  </Link>
-                )}
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="flex items-start gap-4">
+                  <div className="-mt-14 flex h-16 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-white shadow-sm sm:h-20 sm:w-28">
+                    {partner?.logo_url ? (
+                      <img src={partner.logo_url} alt="" className="size-full object-contain p-2" />
+                    ) : (
+                      <IconGraduationCap className="size-8 text-brand-blue-300" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 pt-1">
+                    <h1 className="text-xl font-black text-brand-ink sm:text-2xl">{scholarship.title}</h1>
+                    {partner && (
+                      <Link to={`/nha-tai-tro/${partner.id}`} className="text-sm font-medium text-brand-blue-600 hover:underline">
+                        {partner.company_name}
+                      </Link>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <FactChip tone="blue" icon={<IconWallet className="size-4.5" />} label="Giá trị" value={formatCurrencyVnd(scholarship.total_budget)} />
                   <FactChip
                     tone="green"
@@ -232,9 +262,17 @@ export function ScholarshipDetailPage() {
             {related.length > 0 && (
               <div>
                 <h2 className="mb-3 text-lg font-bold text-brand-ink">Học bổng liên quan</h2>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {/* 4 cột, cùng ScholarshipMiniCard đang dùng ở trang chủ, kèm cờ lưu - related luôn cùng
+                    1 đối tác (fetch theo partner_profile_id) nên dùng chung state `partner` đã có sẵn. */}
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
                   {related.map((r) => (
-                    <ScholarshipCard key={r.id} scholarship={r} />
+                    <ScholarshipMiniCard
+                      key={r.id}
+                      scholarship={r}
+                      partner={partner ?? undefined}
+                      saved={Boolean(savedIds[r.id])}
+                      onToggleSave={() => void toggleSave(r.id)}
+                    />
                   ))}
                 </div>
               </div>
@@ -273,15 +311,28 @@ export function ScholarshipDetailPage() {
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="mb-4 text-sm text-brand-ink-soft">
-                Sẵn sàng ứng tuyển? Hoàn thiện hồ sơ và nộp trước <span className="font-semibold text-brand-ink">{formatDate(scholarship.deadline)}</span>.
-              </p>
+              {isLockedForCandidate ? (
+                <div className="mb-4 rounded-xl border border-brand-yellow-300 bg-brand-yellow-400/10 p-3 text-sm text-brand-ink">
+                  <p className="font-bold">✨ Học bổng độc quyền Skola VIP</p>
+                  <p className="mt-1 text-brand-ink-soft">Nâng cấp Skola VIP để mở khoá nộp đơn cho học bổng này.</p>
+                </div>
+              ) : (
+                <p className="mb-4 text-sm text-brand-ink-soft">
+                  Sẵn sàng ứng tuyển? Hoàn thiện hồ sơ và nộp trước <span className="font-semibold text-brand-ink">{formatDate(scholarship.deadline)}</span>.
+                </p>
+              )}
               <div className="flex flex-col gap-2">
-                <Link to={`/hoc-bong/${scholarship.id}/ung-tuyen`}>
-                  <Button className="w-full">Ứng tuyển ngay</Button>
-                </Link>
-                <Button variant="secondary" className="w-full" onClick={() => void toggleSave()}>
-                  {savedInteractionId ? 'Bỏ lưu học bổng' : 'Lưu học bổng'}
+                {isLockedForCandidate ? (
+                  <Link to="/skola-vip?tab=candidate">
+                    <Button variant="yellow" className="w-full">Nâng cấp Skola VIP</Button>
+                  </Link>
+                ) : (
+                  <Link to={`/hoc-bong/${scholarship.id}/ung-tuyen`}>
+                    <Button className="w-full">Ứng tuyển ngay</Button>
+                  </Link>
+                )}
+                <Button variant="secondary" className="w-full" onClick={() => void toggleSave(scholarship.id)}>
+                  {savedIds[scholarship.id] ? 'Bỏ lưu học bổng' : 'Lưu học bổng'}
                 </Button>
               </div>
             </div>
