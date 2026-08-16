@@ -14,7 +14,7 @@ import { ApiError } from '@/shared/api/types'
 
 const schema = z
   .object({
-    role: z.enum(['candidate', 'partner']),
+    role: z.enum(['candidate', 'partner', 'mentor']),
     email: z.string().email('Email không hợp lệ'),
     password: z
       .string()
@@ -57,6 +57,7 @@ export function RegisterPage() {
           <Select {...register('role')} error={Boolean(errors.role)}>
             <option value="candidate">Sinh viên</option>
             <option value="partner">Nhà tài trợ</option>
+            <option value="mentor">Mentor</option>
           </Select>
         </Field>
         <Field label="Email đăng nhập" required error={errors.email?.message}>
