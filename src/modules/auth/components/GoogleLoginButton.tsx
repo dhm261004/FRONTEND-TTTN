@@ -24,6 +24,16 @@ const GOOGLE_LOGO_URL =
   'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1280px-Google_%22G%22_logo.svg.png'
 
 let scriptLoadPromise: Promise<void> | null = null
+// google.accounts.id là singleton của cả trang (không tách theo instance React) — gọi initialize()
+// lần thứ hai TRỞ ĐI trong cùng một lượt tải trang, dù từ một component instance hoàn toàn mới (vd.
+// điều hướng từ trang Đăng ký sang Đăng nhập, mỗi trang tự mount GoogleLoginButton riêng), vẫn bị
+// Google coi là "gọi nhiều lần" và cảnh báo. Guard ở cấp module để initialize() chỉ chạy đúng 1 lần
+// cho toàn vòng đời trang, bất kể bao nhiêu component instance đã mount/unmount.
+let initialized = false
+// Con trỏ tới hàm xử lý credential của instance đang mounted — cập nhật lại mỗi lần render để
+// callback global (chỉ đăng ký đúng 1 lần lúc initialize()) luôn gọi đúng vào instance hiện tại
+// (Login hay Register) thay vì closure cũ của một instance đã unmount.
+let activeCredentialHandler: ((response: { credential: string }) => void) | null = null
 
 function loadGoogleIdentityScript(): Promise<void> {
   if (window.google?.accounts?.id) return Promise.resolve()
@@ -48,12 +58,7 @@ export function GoogleLoginButton() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
 
-  // Google chỉ nên initialize() một lần / lần mount (gọi lại nhiều lần bắn ra warning
-  // "initialize() is called multiple times" — trước đây effect phụ thuộc cả navigate/location
-  // nên re-run mỗi khi location đổi). Giữ logic xử lý credential trong ref để callback đăng ký
-  // một lần vẫn luôn đọc đúng location/navigate mới nhất tại thời điểm người dùng bấm nút.
-  const handleCredentialRef = useRef<(response: { credential: string }) => void>(() => {})
-  handleCredentialRef.current = (response) => {
+  activeCredentialHandler = (response) => {
     void (async () => {
       setError(null)
       try {
@@ -73,10 +78,13 @@ export function GoogleLoginButton() {
     loadGoogleIdentityScript()
       .then(() => {
         if (cancelled || !containerRef.current || !window.google) return
-        window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: (response) => handleCredentialRef.current(response),
-        })
+        if (!initialized) {
+          window.google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: (response) => activeCredentialHandler?.(response),
+          })
+          initialized = true
+        }
         window.google.accounts.id.renderButton(containerRef.current, {
           type: 'icon',
           theme: 'outline',
@@ -92,7 +100,6 @@ export function GoogleLoginButton() {
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- cố ý chỉ chạy 1 lần/mount, xem comment ở handleCredentialRef
   }, [])
 
   if (!GOOGLE_CLIENT_ID) return null
