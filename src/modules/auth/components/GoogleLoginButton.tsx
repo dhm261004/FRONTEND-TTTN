@@ -48,6 +48,24 @@ export function GoogleLoginButton() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // Google chỉ nên initialize() một lần / lần mount (gọi lại nhiều lần bắn ra warning
+  // "initialize() is called multiple times" — trước đây effect phụ thuộc cả navigate/location
+  // nên re-run mỗi khi location đổi). Giữ logic xử lý credential trong ref để callback đăng ký
+  // một lần vẫn luôn đọc đúng location/navigate mới nhất tại thời điểm người dùng bấm nút.
+  const handleCredentialRef = useRef<(response: { credential: string }) => void>(() => {})
+  handleCredentialRef.current = (response) => {
+    void (async () => {
+      setError(null)
+      try {
+        const user = await loginWithGoogle(response.credential)
+        const redirectTo = (location.state as { from?: string } | null)?.from ?? getPostLoginRedirect(user)
+        navigate(redirectTo, { replace: true })
+      } catch {
+        setError('Đăng nhập bằng Google thất bại. Vui lòng thử lại.')
+      }
+    })()
+  }
+
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return
     let cancelled = false
@@ -57,18 +75,7 @@ export function GoogleLoginButton() {
         if (cancelled || !containerRef.current || !window.google) return
         window.google.accounts.id.initialize({
           client_id: GOOGLE_CLIENT_ID,
-          callback: (response) => {
-            void (async () => {
-              setError(null)
-              try {
-                const user = await loginWithGoogle(response.credential)
-                const redirectTo = (location.state as { from?: string } | null)?.from ?? getPostLoginRedirect(user)
-                navigate(redirectTo, { replace: true })
-              } catch {
-                setError('Đăng nhập bằng Google thất bại. Vui lòng thử lại.')
-              }
-            })()
-          },
+          callback: (response) => handleCredentialRef.current(response),
         })
         window.google.accounts.id.renderButton(containerRef.current, {
           type: 'icon',
@@ -85,7 +92,8 @@ export function GoogleLoginButton() {
     return () => {
       cancelled = true
     }
-  }, [loginWithGoogle, navigate, location])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- cố ý chỉ chạy 1 lần/mount, xem comment ở handleCredentialRef
+  }, [])
 
   if (!GOOGLE_CLIENT_ID) return null
 
