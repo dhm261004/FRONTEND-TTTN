@@ -23,13 +23,13 @@ const sortByName = <T extends { name: string }>(items: T[]): T[] => [...items].s
 export const provincesApi = {
   listProvinces: (): Promise<Province[]> =>
     fetch(`${BASE_URL}/`)
-      .then((r) => r.json())
-      .then(sortByName),
+      .then((r) => r.json() as Promise<Province[]>)
+      .then((items) => sortByName(items)),
   // Lấy phường/xã theo tỉnh qua depth=2 (chỉ ~14KB/tỉnh) thay vì tải toàn bộ /api/v2/w/ cả nước (~360KB)
   // rồi tự lọc theo province_code.
   listWardsByProvince: (provinceCode: number): Promise<Ward[]> =>
     fetch(`${BASE_URL}/p/${provinceCode}?depth=2`)
       .then((r) => r.json())
       .then((p: { wards: Ward[] }) => p.wards)
-      .then(sortByName),
+      .then((items) => sortByName(items)),
 }
