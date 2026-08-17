@@ -17,8 +17,6 @@ import { ProfileEditPage } from '@/modules/partner/pages/ProfileEditPage'
 import { SecurityPage as PartnerSecurityPage } from '@/modules/partner/pages/SecurityPage'
 import { TransactionHistoryPage as PartnerTransactionHistoryPage } from '@/modules/partner/pages/TransactionHistoryPage'
 import { CreatePartnerProfilePage } from '@/modules/partner/pages/CreatePartnerProfilePage'
-import { UnsupportedFeaturePage } from '@/modules/partner/pages/UnsupportedFeaturePage'
-import { MANAGEMENT_NAV } from '@/modules/partner/components/nav'
 import { MentorProfileProvider } from '@/modules/mentor/MentorProfileContext'
 import { CreateMentorProfilePage } from '@/modules/mentor/pages/CreateMentorProfilePage'
 import { AccountSettingsPage as MentorAccountSettingsPage } from '@/modules/mentor/pages/AccountSettingsPage'
@@ -142,16 +140,6 @@ function AppRoutes() {
         <Route path="/doi-tac/hoc-bong/moi" element={<ScholarshipFormPage />} />
         <Route path="/doi-tac/hoc-bong/:id/sua" element={<ScholarshipFormPage />} />
         <Route path="/doi-tac/ho-so-ung-vien" element={<CandidatesPage />} />
-        <Route
-          path="/doi-tac/ngan-sach"
-          element={
-            <UnsupportedFeaturePage
-              nav={MANAGEMENT_NAV}
-              title="Quản lý ngân sách"
-              description="Backend hiện chưa có model lưu trữ ngân sách theo chương trình học bổng. Tính năng này sẽ được bổ sung khi schema tương ứng sẵn sàng."
-            />
-          }
-        />
 
         <Route path="/doi-tac/ho-so" element={<ProfileEditPage />} />
         <Route path="/doi-tac/ho-so/sua" element={<Navigate to="/doi-tac/ho-so" replace />} />
