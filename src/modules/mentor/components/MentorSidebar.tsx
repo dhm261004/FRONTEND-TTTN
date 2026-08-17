@@ -1,18 +1,18 @@
 import { Link, useLocation } from 'react-router-dom'
 import { cn } from '@/shared/lib/cn'
-import { useToast } from '@/shared/components/ui/ToastProvider'
 import { useMentorProfile } from '@/modules/mentor/MentorProfileContext'
 import { useAuth } from '@/modules/auth/AuthContext'
+import { VipBadge, isVipActive } from '@/shared/components/ui/VipBadge'
 import { MENTOR_NAV } from '@/modules/mentor/components/nav'
 
 export function MentorSidebar() {
   const location = useLocation()
   const { profile } = useMentorProfile()
   const { user } = useAuth()
-  const { notify } = useToast()
 
   const displayName = profile?.full_name || profile?.job_title || user?.email || 'Mentor'
   const shortId = profile ? profile.id.slice(0, 8).toUpperCase() : null
+  const vip = isVipActive(profile?.vip_expires_at)
 
   return (
     <aside className="w-full shrink-0 space-y-4 lg:w-[280px]">
@@ -22,13 +22,16 @@ export function MentorSidebar() {
         </div>
         <p className="font-semibold text-brand-ink">{displayName}</p>
         <p className="text-xs text-brand-ink-soft">{shortId ? `ID ${shortId}` : 'Mentor'}</p>
-        <button
-          type="button"
-          onClick={() => notify('Skola VIP sẽ sớm ra mắt.', 'success')}
-          className="mt-4 w-full rounded-xl bg-brand-blue-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-blue-600"
-        >
-          Nâng cấp Skola VIP
-        </button>
+        {vip ? (
+          <VipBadge expiresAt={profile?.vip_expires_at} className="mt-3" />
+        ) : (
+          <Link
+            to="/skola-vip?tab=mentor"
+            className="mt-4 block w-full rounded-xl bg-brand-blue-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-blue-600"
+          >
+            Nâng cấp Skola VIP
+          </Link>
+        )}
       </div>
 
       <nav className="space-y-1 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
