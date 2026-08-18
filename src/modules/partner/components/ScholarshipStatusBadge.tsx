@@ -8,7 +8,14 @@ export function getScholarshipStatus(scholarship: Pick<Scholarship, 'is_active' 
   return { label: 'Đang mở đơn', tone: 'green' as const }
 }
 
-export function ScholarshipStatusBadge({ scholarship }: { scholarship: Pick<Scholarship, 'is_active' | 'deadline'> }) {
+export function ScholarshipStatusBadge({ scholarship }: { scholarship: Pick<Scholarship, 'is_active' | 'deadline' | 'is_hidden'> }) {
   const status = getScholarshipStatus(scholarship)
-  return <Badge tone={status.tone}>{status.label}</Badge>
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <Badge tone={status.tone}>{status.label}</Badge>
+      {/* is_hidden do admin đặt (kiểm duyệt) — hoàn toàn tách biệt với is_active (đối tác tự đóng mở đơn),
+          xem CLAUDE.md#Scholarship.isHidden. Hiện thêm badge riêng, không thay thế badge trạng thái mở/đóng. */}
+      {scholarship.is_hidden && <Badge tone="red">Đã bị ẩn bởi quản trị viên</Badge>}
+    </div>
+  )
 }

@@ -53,6 +53,7 @@ export interface Scholarship {
   start_date: string | null
   deadline: string
   is_active: boolean
+  is_hidden: boolean
   total_slots: number | null
   total_budget: number | null
   created_at: string

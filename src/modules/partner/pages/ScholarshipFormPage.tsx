@@ -90,6 +90,7 @@ export function ScholarshipFormPage() {
 
   const [loadingScholarship, setLoadingScholarship] = useState(isEdit)
   const [serverError, setServerError] = useState<string | null>(null)
+  const [isHidden, setIsHidden] = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null)
   const [imageUploading, setImageUploading] = useState(false)
@@ -148,6 +149,7 @@ export function ScholarshipFormPage() {
       setSelectedProvinces(s.location_province_cities)
       setRequirements(s.required_certificates)
       setImagePreview(s.image_url)
+      setIsHidden(s.is_hidden)
       setLoadingScholarship(false)
     })
   }, [id, reset])
@@ -327,6 +329,17 @@ export function ScholarshipFormPage() {
     <PartnerLayout nav={MANAGEMENT_NAV}>
       <h1 className="mb-1 text-2xl font-bold text-brand-ink">{isEdit ? 'Chỉnh sửa học bổng' : 'Tạo học bổng mới'}</h1>
       <p className="mb-6 text-sm text-brand-ink-soft">Vui lòng điền đầy đủ thông tin để {isEdit ? 'cập nhật' : 'tạo'} chương trình học bổng</p>
+
+      {isHidden && (
+        <div className="mb-6 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+          <span aria-hidden>⚠</span>
+          <span>
+            Học bổng này đã bị <strong>quản trị viên ẩn</strong> khỏi trang công khai (không hiển thị trong danh sách/chi
+            tiết học bổng với ứng viên). Bạn vẫn có thể xem và chỉnh sửa bình thường. Nếu cho rằng đây là nhầm lẫn, vui
+            lòng liên hệ quản trị viên để được mở lại.
+          </span>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <section>
