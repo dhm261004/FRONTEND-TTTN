@@ -18,10 +18,18 @@ export interface PartnerProfile {
   vip_expires_at: string | null
 }
 
+export interface MajorGroup {
+  id: number
+  code: string
+  name: string
+}
+
 export interface Major {
   id: number
   code: string
   name: string
+  group_id: number
+  group_name: string
 }
 
 export interface ScholarshipCertificateRequirement {

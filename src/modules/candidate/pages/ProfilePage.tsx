@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { CandidateLayout } from '@/modules/candidate/components/CandidateLayout'
 import { useCandidateProfile } from '@/modules/candidate/CandidateProfileContext'
 import { candidateProfileApi } from '@/modules/candidate/api/candidateProfile.api'
-import { majorsApi } from '@/modules/scholarships/api/majors.api'
+import { majorGroupsApi, majorsApi } from '@/modules/scholarships/api/majors.api'
 import { provincesApi, type Province, type Ward } from '@/shared/api/provinces.api'
 import { useAuth } from '@/modules/auth/AuthContext'
 import { Field } from '@/shared/components/ui/Field'
@@ -19,7 +19,7 @@ import { useToast } from '@/shared/components/ui/ToastProvider'
 import { ApiError } from '@/shared/api/types'
 import { dateInputToIso, toDateInputValue } from '@/shared/lib/format'
 import { IconAward, IconPlusCircle, IconX } from '@/modules/candidate/components/icons'
-import type { Major } from '@/modules/scholarships/types'
+import type { Major, MajorGroup } from '@/modules/scholarships/types'
 import type { CandidateActivity, CandidateAward, CandidateCertificate } from '@/modules/candidate/types'
 import type { UserRole } from '@/modules/auth/types'
 
@@ -64,7 +64,10 @@ export function ProfilePage() {
   const { user } = useAuth()
   const { notify } = useToast()
   const [majors, setMajors] = useState<Major[]>([])
+  const [majorGroups, setMajorGroups] = useState<MajorGroup[]>([])
   const [targetMajors, setTargetMajors] = useState<string[]>([])
+  const [majorGroupToAdd, setMajorGroupToAdd] = useState('')
+  const [majorToAdd, setMajorToAdd] = useState('')
   const [serverError, setServerError] = useState<string | null>(null)
 
   const [provinces, setProvinces] = useState<Province[]>([])
@@ -105,6 +108,7 @@ export function ProfilePage() {
 
   useEffect(() => {
     void majorsApi.list().then(setMajors)
+    void majorGroupsApi.list().then(setMajorGroups)
     void candidateProfileApi.listCertificates().then(setCertificates)
     void candidateProfileApi.listActivities().then(setActivities)
     void candidateProfileApi.listAwards().then(setAwards)
@@ -156,6 +160,13 @@ export function ProfilePage() {
 
   const toggleMajor = (code: string) => {
     setTargetMajors((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]))
+  }
+
+  const addSelectedMajor = () => {
+    if (!majorToAdd) return
+    const major = majors.find((m) => String(m.id) === majorToAdd)
+    if (major && !targetMajors.includes(major.code)) toggleMajor(major.code)
+    setMajorToAdd('')
   }
 
   const handleUploadAvatar = async (file: File) => {
@@ -297,21 +308,63 @@ export function ProfilePage() {
             <div className="mt-4">
               <span className="mb-1.5 block text-sm font-medium text-brand-ink">Ngành mục tiêu</span>
               <div className="flex flex-wrap gap-2">
-                {majors.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => toggleMajor(m.code)}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                      targetMajors.includes(m.code)
-                        ? 'border-brand-blue-500 bg-brand-blue-50 text-brand-blue-600'
-                        : 'border-slate-200 text-brand-ink-soft hover:bg-slate-50'
-                    }`}
-                  >
-                    {m.name}
-                  </button>
-                ))}
+                <Select
+                  value={majorGroupToAdd}
+                  onChange={(e) => {
+                    setMajorGroupToAdd(e.target.value)
+                    setMajorToAdd('')
+                  }}
+                >
+                  <option value="">-- Chọn nhóm ngành --</option>
+                  {majorGroups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+                </Select>
+                <Select value={majorToAdd} onChange={(e) => setMajorToAdd(e.target.value)} disabled={!majorGroupToAdd}>
+                  <option value="">-- Chọn ngành để thêm --</option>
+                  {majors
+                    .filter((m) => String(m.group_id) === majorGroupToAdd && !targetMajors.includes(m.code))
+                    .map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                </Select>
+                <Button type="button" variant="secondary" disabled={!majorToAdd} onClick={addSelectedMajor}>
+                  Thêm
+                </Button>
               </div>
+
+              {targetMajors.length > 0 ? (
+                <div className="mt-3 space-y-2">
+                  {majorGroups.map((group) => {
+                    const majorsInGroup = majors.filter((m) => m.group_id === group.id && targetMajors.includes(m.code))
+                    if (majorsInGroup.length === 0) return null
+                    return (
+                      <div key={group.id}>
+                        <p className="mb-1 text-xs font-medium text-brand-ink-soft">{group.name}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {majorsInGroup.map((m) => (
+                            <span
+                              key={m.id}
+                              className="flex items-center gap-1.5 rounded-full bg-brand-blue-50 px-3 py-1.5 text-xs font-medium text-brand-blue-600"
+                            >
+                              {m.name}
+                              <button type="button" onClick={() => toggleMajor(m.code)} className="text-brand-blue-400 hover:text-red-500">
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-brand-ink-soft">Chưa chọn ngành mục tiêu nào.</p>
+              )}
             </div>
           </div>
 

@@ -15,9 +15,9 @@ import { Spinner } from '@/shared/components/ui/Spinner'
 import { useToast } from '@/shared/components/ui/ToastProvider'
 import { usePartnerProfile } from '@/modules/partner/PartnerProfileContext'
 import { scholarshipsApi } from '@/modules/partner/api/scholarships.api'
-import { majorsApi } from '@/modules/partner/api/majors.api'
+import { majorGroupsApi, majorsApi } from '@/modules/partner/api/majors.api'
 import { provincesApi, type Province } from '@/shared/api/provinces.api'
-import type { Major, ScholarshipCertificateRequirement } from '@/modules/partner/types'
+import type { Major, MajorGroup, ScholarshipCertificateRequirement } from '@/modules/partner/types'
 import { dateInputToIso, dateInputToIsoStart, toDateInputValue } from '@/shared/lib/format'
 
 const schema = z
@@ -78,8 +78,11 @@ export function ScholarshipFormPage() {
   const [selectedProvinces, setSelectedProvinces] = useState<string[]>([])
   const [provinceToAdd, setProvinceToAdd] = useState('')
   const [majorsCatalog, setMajorsCatalog] = useState<Major[]>([])
+  const [majorGroupsCatalog, setMajorGroupsCatalog] = useState<MajorGroup[]>([])
   const [selectedMajorIds, setSelectedMajorIds] = useState<number[]>([])
   const [majorBusy, setMajorBusy] = useState<number | null>(null)
+  const [majorGroupToAdd, setMajorGroupToAdd] = useState('')
+  const [majorToAdd, setMajorToAdd] = useState('')
 
   const [requirements, setRequirements] = useState<ScholarshipCertificateRequirement[]>([])
   const [requirementInput, setRequirementInput] = useState('')
@@ -119,6 +122,7 @@ export function ScholarshipFormPage() {
 
   useEffect(() => {
     majorsApi.list().then(setMajorsCatalog)
+    majorGroupsApi.list().then(setMajorGroupsCatalog)
     provincesApi.listProvinces().then(setProvinces)
   }, [])
 
@@ -253,6 +257,12 @@ export function ScholarshipFormPage() {
     } finally {
       setMajorBusy(null)
     }
+  }
+
+  const addSelectedMajor = () => {
+    if (!majorToAdd) return
+    void toggleMajor(Number(majorToAdd))
+    setMajorToAdd('')
   }
 
   const addRequirement = async () => {
@@ -478,26 +488,70 @@ export function ScholarshipFormPage() {
         <section>
           <h2 className="mb-4 text-lg font-bold text-brand-ink">4. Ngành học phù hợp</h2>
           <div className="flex flex-wrap gap-2">
-            {majorsCatalog.map((major) => {
-              const checked = selectedMajorIds.includes(major.id)
-              return (
-                <button
-                  type="button"
-                  key={major.id}
-                  disabled={majorBusy === major.id}
-                  onClick={() => toggleMajor(major.id)}
-                  className={
-                    checked
-                      ? 'rounded-full bg-brand-blue-500 px-3.5 py-1.5 text-xs font-medium text-white disabled:opacity-60'
-                      : 'rounded-full border border-slate-200 px-3.5 py-1.5 text-xs font-medium text-brand-ink-soft hover:bg-slate-50 disabled:opacity-60'
-                  }
-                >
-                  {major.name}
-                </button>
-              )
-            })}
-            {majorsCatalog.length === 0 && <p className="text-sm text-brand-ink-soft">Chưa có ngành học nào trong danh mục.</p>}
+            <Select
+              value={majorGroupToAdd}
+              onChange={(e) => {
+                setMajorGroupToAdd(e.target.value)
+                setMajorToAdd('')
+              }}
+            >
+              <option value="">-- Chọn nhóm ngành --</option>
+              {majorGroupsCatalog.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </Select>
+            <Select value={majorToAdd} onChange={(e) => setMajorToAdd(e.target.value)} disabled={!majorGroupToAdd}>
+              <option value="">-- Chọn ngành để thêm --</option>
+              {majorsCatalog
+                .filter((m) => String(m.group_id) === majorGroupToAdd && !selectedMajorIds.includes(m.id))
+                .map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+            </Select>
+            <Button type="button" variant="secondary" disabled={!majorToAdd || majorBusy != null} onClick={addSelectedMajor}>
+              Thêm
+            </Button>
           </div>
+
+          {selectedMajorIds.length > 0 ? (
+            <div className="mt-3 space-y-3">
+              {majorGroupsCatalog.map((group) => {
+                const majorsInGroup = majorsCatalog.filter((m) => m.group_id === group.id && selectedMajorIds.includes(m.id))
+                if (majorsInGroup.length === 0) return null
+                return (
+                  <div key={group.id}>
+                    <p className="mb-1 text-xs font-medium text-brand-ink-soft">{group.name}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {majorsInGroup.map((major) => (
+                        <span
+                          key={major.id}
+                          className="flex items-center gap-1.5 rounded-full bg-brand-blue-50 px-3 py-1 text-xs font-medium text-brand-blue-600"
+                        >
+                          {major.name}
+                          <button
+                            type="button"
+                            disabled={majorBusy === major.id}
+                            onClick={() => toggleMajor(major.id)}
+                            className="text-brand-blue-400 hover:text-red-500 disabled:opacity-60"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="mt-2 text-xs text-brand-ink-soft">
+              {majorsCatalog.length === 0 ? 'Chưa có ngành học nào trong danh mục.' : 'Chưa chọn ngành học nào phù hợp.'}
+            </p>
+          )}
         </section>
 
         <section>
