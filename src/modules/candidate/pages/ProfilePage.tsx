@@ -162,11 +162,21 @@ export function ProfilePage() {
     setTargetMajors((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]))
   }
 
+  const majorsAvailableInSelectedGroup = majorGroupToAdd
+    ? majors.filter((m) => String(m.group_id) === majorGroupToAdd && !targetMajors.includes(m.code))
+    : []
+
   const addSelectedMajor = () => {
     if (!majorToAdd) return
     const major = majors.find((m) => String(m.id) === majorToAdd)
     if (major && !targetMajors.includes(major.code)) toggleMajor(major.code)
     setMajorToAdd('')
+  }
+
+  const addAllMajorsInGroup = () => {
+    if (majorsAvailableInSelectedGroup.length === 0) return
+    const codesToAdd = majorsAvailableInSelectedGroup.map((m) => m.code)
+    setTargetMajors((prev) => [...prev, ...codesToAdd])
   }
 
   const handleUploadAvatar = async (file: File) => {
@@ -307,34 +317,51 @@ export function ProfilePage() {
             </div>
             <div className="mt-4">
               <span className="mb-1.5 block text-sm font-medium text-brand-ink">Ngành mục tiêu</span>
-              <div className="flex flex-wrap gap-2">
-                <Select
-                  value={majorGroupToAdd}
-                  onChange={(e) => {
-                    setMajorGroupToAdd(e.target.value)
-                    setMajorToAdd('')
-                  }}
-                >
-                  <option value="">-- Chọn nhóm ngành --</option>
-                  {majorGroups.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}
-                    </option>
-                  ))}
-                </Select>
-                <Select value={majorToAdd} onChange={(e) => setMajorToAdd(e.target.value)} disabled={!majorGroupToAdd}>
-                  <option value="">-- Chọn ngành để thêm --</option>
-                  {majors
-                    .filter((m) => String(m.group_id) === majorGroupToAdd && !targetMajors.includes(m.code))
-                    .map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                </Select>
-                <Button type="button" variant="secondary" disabled={!majorToAdd} onClick={addSelectedMajor}>
-                  Thêm
-                </Button>
+              <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-brand-ink-soft">Nhóm ngành</label>
+                    <Select
+                      value={majorGroupToAdd}
+                      onChange={(e) => {
+                        setMajorGroupToAdd(e.target.value)
+                        setMajorToAdd('')
+                      }}
+                    >
+                      <option value="">-- Chọn nhóm ngành --</option>
+                      {majorGroups.map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-brand-ink-soft">Ngành</label>
+                    <Select value={majorToAdd} onChange={(e) => setMajorToAdd(e.target.value)} disabled={!majorGroupToAdd}>
+                      <option value="">-- Chọn ngành để thêm --</option>
+                      {majorsAvailableInSelectedGroup.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button type="button" size="sm" variant="secondary" disabled={!majorToAdd} onClick={addSelectedMajor}>
+                    + Thêm ngành đã chọn
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={!majorGroupToAdd || majorsAvailableInSelectedGroup.length === 0}
+                    onClick={addAllMajorsInGroup}
+                  >
+                    Thêm tất cả ngành trong nhóm này
+                  </Button>
+                </div>
               </div>
 
               {targetMajors.length > 0 ? (

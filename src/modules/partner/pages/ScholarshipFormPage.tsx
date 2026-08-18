@@ -259,10 +259,24 @@ export function ScholarshipFormPage() {
     }
   }
 
+  const [bulkAddingMajors, setBulkAddingMajors] = useState(false)
+  const majorsAvailableInSelectedGroup = majorGroupToAdd
+    ? majorsCatalog.filter((m) => String(m.group_id) === majorGroupToAdd && !selectedMajorIds.includes(m.id))
+    : []
+
   const addSelectedMajor = () => {
     if (!majorToAdd) return
     void toggleMajor(Number(majorToAdd))
     setMajorToAdd('')
+  }
+
+  const addAllMajorsInGroup = async () => {
+    setBulkAddingMajors(true)
+    try {
+      for (const m of majorsAvailableInSelectedGroup) await toggleMajor(m.id)
+    } finally {
+      setBulkAddingMajors(false)
+    }
   }
 
   const addRequirement = async () => {
@@ -487,34 +501,53 @@ export function ScholarshipFormPage() {
 
         <section>
           <h2 className="mb-4 text-lg font-bold text-brand-ink">4. Ngành học phù hợp</h2>
-          <div className="flex flex-wrap gap-2">
-            <Select
-              value={majorGroupToAdd}
-              onChange={(e) => {
-                setMajorGroupToAdd(e.target.value)
-                setMajorToAdd('')
-              }}
-            >
-              <option value="">-- Chọn nhóm ngành --</option>
-              {majorGroupsCatalog.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </Select>
-            <Select value={majorToAdd} onChange={(e) => setMajorToAdd(e.target.value)} disabled={!majorGroupToAdd}>
-              <option value="">-- Chọn ngành để thêm --</option>
-              {majorsCatalog
-                .filter((m) => String(m.group_id) === majorGroupToAdd && !selectedMajorIds.includes(m.id))
-                .map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-            </Select>
-            <Button type="button" variant="secondary" disabled={!majorToAdd || majorBusy != null} onClick={addSelectedMajor}>
-              Thêm
-            </Button>
+          <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-brand-ink-soft">Nhóm ngành</label>
+                <Select
+                  value={majorGroupToAdd}
+                  disabled={bulkAddingMajors}
+                  onChange={(e) => {
+                    setMajorGroupToAdd(e.target.value)
+                    setMajorToAdd('')
+                  }}
+                >
+                  <option value="">-- Chọn nhóm ngành --</option>
+                  {majorGroupsCatalog.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-brand-ink-soft">Ngành</label>
+                <Select value={majorToAdd} onChange={(e) => setMajorToAdd(e.target.value)} disabled={!majorGroupToAdd || bulkAddingMajors}>
+                  <option value="">-- Chọn ngành để thêm --</option>
+                  {majorsAvailableInSelectedGroup.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button type="button" size="sm" variant="secondary" disabled={!majorToAdd || majorBusy != null || bulkAddingMajors} onClick={addSelectedMajor}>
+                + Thêm ngành đã chọn
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                loading={bulkAddingMajors}
+                disabled={!majorGroupToAdd || majorsAvailableInSelectedGroup.length === 0 || majorBusy != null}
+                onClick={addAllMajorsInGroup}
+              >
+                Thêm tất cả ngành trong nhóm này
+              </Button>
+            </div>
           </div>
 
           {selectedMajorIds.length > 0 ? (
