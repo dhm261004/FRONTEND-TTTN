@@ -17,7 +17,7 @@ import { usePartnerProfile } from '@/modules/partner/PartnerProfileContext'
 import { scholarshipsApi } from '@/modules/partner/api/scholarships.api'
 import { majorGroupsApi, majorsApi } from '@/modules/partner/api/majors.api'
 import { provincesApi, type Province } from '@/shared/api/provinces.api'
-import type { Major, MajorGroup, ScholarshipCertificateRequirement } from '@/modules/partner/types'
+import type { Major, MajorGroup, Scholarship, ScholarshipCertificateRequirement } from '@/modules/partner/types'
 import { dateInputToIso, dateInputToIsoStart, toDateInputValue } from '@/shared/lib/format'
 
 const schema = z
@@ -91,6 +91,8 @@ export function ScholarshipFormPage() {
   const [loadingScholarship, setLoadingScholarship] = useState(isEdit)
   const [serverError, setServerError] = useState<string | null>(null)
   const [isHidden, setIsHidden] = useState(false)
+  const [reviewStatus, setReviewStatus] = useState<Scholarship['review_status']>('approved')
+  const [reviewReason, setReviewReason] = useState<string | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null)
   const [imageUploading, setImageUploading] = useState(false)
@@ -150,6 +152,8 @@ export function ScholarshipFormPage() {
       setRequirements(s.required_certificates)
       setImagePreview(s.image_url)
       setIsHidden(s.is_hidden)
+      setReviewStatus(s.review_status)
+      setReviewReason(s.review_reason)
       setLoadingScholarship(false)
     })
   }, [id, reset])
@@ -339,6 +343,50 @@ export function ScholarshipFormPage() {
             lòng liên hệ quản trị viên để được mở lại.
           </span>
         </div>
+      )}
+
+      {/* review_status là vòng đời kiểm duyệt nội dung, khác hẳn is_hidden ở trên — xem ghi chú tại
+          ScholarshipStatusBadge.tsx#getReviewStatusInfo. Chỉ hiện khi sửa học bổng đã có (isEdit), vì học
+          bổng mới tạo luôn mặc định 'pending' — không cần cảnh báo ngay khi vừa bấm "Tạo học bổng". */}
+      {isEdit && reviewStatus === 'pending' && (
+        <div className="mb-6 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          <span aria-hidden>⏳</span>
+          <span>Học bổng này đang <strong>chờ quản trị viên duyệt</strong> — chưa hiển thị công khai với ứng viên cho tới khi được duyệt.</span>
+        </div>
+      )}
+      {isEdit && reviewStatus === 'rejected' && (
+        <div className="mb-6 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+          <span aria-hidden>✕</span>
+          <span>
+            Học bổng này đã bị <strong>quản trị viên từ chối</strong>.
+            {reviewReason && (
+              <>
+                {' '}Lý do: <span className="italic">&ldquo;{reviewReason}&rdquo;</span>.
+              </>
+            )}{' '}
+            Sửa lại nội dung và lưu để gửi duyệt lại.
+          </span>
+        </div>
+      )}
+      {isEdit && reviewStatus === 'changes_requested' && (
+        <div className="mb-6 flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+          <span aria-hidden>✎</span>
+          <span>
+            Quản trị viên <strong>yêu cầu chỉnh sửa</strong> học bổng này trước khi duyệt.
+            {reviewReason && (
+              <>
+                {' '}Chi tiết: <span className="italic">&ldquo;{reviewReason}&rdquo;</span>.
+              </>
+            )}{' '}
+            Cập nhật nội dung và lưu để gửi lại cho quản trị viên xem xét.
+          </span>
+        </div>
+      )}
+      {isEdit && reviewStatus === 'approved' && (
+        <p className="mb-6 text-xs text-brand-ink-soft">
+          Lưu ý: sửa bất kỳ thông tin nào bên dưới (trừ nút Mở đơn/Đóng đơn) sẽ đưa học bổng về trạng thái{' '}
+          <strong>chờ duyệt lại</strong> và tạm ẩn khỏi trang công khai cho tới khi quản trị viên duyệt.
+        </p>
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">

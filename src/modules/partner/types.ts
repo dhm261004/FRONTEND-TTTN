@@ -54,6 +54,8 @@ export interface Scholarship {
   deadline: string
   is_active: boolean
   is_hidden: boolean
+  review_status: 'pending' | 'approved' | 'rejected' | 'changes_requested'
+  review_reason: string | null
   total_slots: number | null
   total_budget: number | null
   created_at: string
